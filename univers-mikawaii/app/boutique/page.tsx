@@ -1,15 +1,11 @@
 "use client";
 
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import { products } from "@/lib/products";
 
 export default function Boutique() {
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden">
-      <Navbar />
-
+    <div className="flex min-h-full flex-col overflow-x-hidden">
       <main className="flex-1 bg-[#fff9f5] px-6 py-16">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center">
@@ -28,8 +24,6 @@ export default function Boutique() {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="relative overflow-hidden bg-gradient-to-tr from-[#FF8FC7] via-[#C9B6FF] to-[#FFD98E] px-6 py-12">
@@ -16,16 +18,13 @@ export default function Footer() {
         <div>
           <h3 className="font-bold text-[#4A3B47]">Navigation</h3>
           <ul className="mt-4 space-y-2 text-sm text-[#5E5060]">
-            <li className="cursor-pointer transition hover:text-pink-600">
-              Boutique
-            </li>
-            <li className="cursor-pointer transition hover:text-pink-600">
-              Nos boîtes
+            <li>
+              <Link href="/boutique" className="transition hover:text-pink-600">
+                Boutique
+              </Link>
             </li>
             <li className="transition hover:text-pink-600">
-              <a href="/a-propos" className="cursor-pointer">
-                À propos
-              </a>
+              <Link href="/a-propos">À propos</Link>
             </li>
           </ul>
         </div>
@@ -34,11 +33,31 @@ export default function Footer() {
         <div>
           <h3 className="font-bold text-[#4A3B47]">Aide</h3>
           <ul className="mt-4 space-y-2 text-sm text-[#5E5060]">
-            <li className="cursor-pointer transition hover:text-pink-600">
-              Contact
+            <li>
+              <Link href="/contact" className="transition hover:text-pink-600">
+                Contact
+              </Link>
             </li>
-            <li className="cursor-pointer transition hover:text-pink-600">
-              Livraison
+            <li>
+              <Link href="/livraison" className="transition hover:text-pink-600">
+                Livraison
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/politique-vente"
+                className="transition hover:text-pink-600"
+              >
+                Ventes finales et remboursements
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/politique-confidentialite"
+                className="transition hover:text-pink-600"
+              >
+                Politique de confidentialité
+              </Link>
             </li>
           </ul>
         </div>

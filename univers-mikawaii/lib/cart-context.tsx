@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 export interface Product {
   id: number;
@@ -15,6 +15,7 @@ export interface CartCustomization {
   notes: string;
   surpriseStar: boolean;
   socialMediaVideo: boolean;
+  recipientName: string;
 }
 
 export interface CartItem extends Product {
@@ -73,7 +74,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (product: Product & { quantity?: number; customization?: CartCustomization }) => {
+  const addToCart = useCallback((product: Product & { quantity?: number; customization?: CartCustomization }) => {
     setItems((prevItems) => {
       const quantity = product.quantity ?? 1;
       const customKey = buildItemKey(product, product.customization);
@@ -97,19 +98,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
         },
       ];
     });
-  };
+  }, []);
 
-  const updateItem = (oldKey: string, nextItem: CartItem) => {
+  const updateItem = useCallback((oldKey: string, nextItem: CartItem) => {
     setItems((prevItems) =>
       prevItems.map((item) => (item.key === oldKey ? nextItem : item))
     );
-  };
+  }, []);
 
-  const removeFromCart = (itemKey: string) => {
+  const removeFromCart = useCallback((itemKey: string) => {
     setItems((prevItems) => prevItems.filter((item) => item.key !== itemKey));
-  };
+  }, []);
 
-  const updateQuantity = (itemKey: string, quantity: number) => {
+  const updateQuantity = useCallback((itemKey: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(itemKey);
       return;
@@ -120,11 +121,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         item.key === itemKey ? { ...item, quantity } : item
       )
     );
-  };
+  }, [removeFromCart]);
 
-  const clearCart = () => {
-    setItems([]);
-  };
+  const clearCart = useCallback(() => {
+    setItems((prevItems) => (prevItems.length === 0 ? prevItems : []));
+  }, []);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(

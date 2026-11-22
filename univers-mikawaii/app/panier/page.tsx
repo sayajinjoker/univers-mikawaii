@@ -1,27 +1,66 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowLeft, CreditCard, Minus, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
+import { DELIVERY_OPTIONS, getDeliveryOption, type DeliveryMethod } from "@/lib/delivery";
+
+interface CheckoutResponse {
+  checkoutUrl?: string;
+  error?: string;
+}
 
 export default function PanierPage() {
   const { items, totalItems, totalPrice, updateQuantity, removeFromCart, clearCart } = useCart();
+  const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
+  const [acceptedSalesPolicy, setAcceptedSalesPolicy] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod | null>(null);
 
-  const shipping = totalItems > 0 ? 6.9 : 0;
+  const delivery = getDeliveryOption(deliveryMethod);
+  const shipping = totalItems > 0 ? (delivery?.price ?? 0) : 0;
   const total = totalPrice + shipping;
-  const orderMessage = items.length
-    ? encodeURIComponent(
-        `Bonjour,\n\nJe souhaite finaliser ma commande avec les articles suivants :\n${items
-          .map((item) => {
-            const customization = item.customization
-              ? `\n  - Scoop${item.customization.scoopCount}: ${item.customization.scoopCount === 2 ? "2 scoops (+20$)" : "1 scoop"}\n  - Étoile surprise: ${item.customization.surpriseStar ? "Oui (+5$)" : "Non"}\n  - Vidéo médias sociaux: ${item.customization.socialMediaVideo ? "Oui" : "Non"}\n  - Préférences: ${item.customization.notes || "Aucune"}`
-              : "";
 
-            return `- ${item.name} x${item.quantity} (${(item.price * item.quantity).toFixed(2)} $)${customization}`;
-          })
-          .join("\n")}\n\nTotal : ${total.toFixed(2)} $.\n\nMerci de me confirmer le paiement.`
-      )
-    : "";
+  const handleCheckout = async () => {
+    if (items.length === 0 || isLoadingCheckout || !acceptedSalesPolicy) return;
+    if (!deliveryMethod) {
+      window.alert("Veuillez choisir un mode de livraison.");
+      return;
+    }
+
+    try {
+      setIsLoadingCheckout(true);
+
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+            customization: item.customization,
+          })),
+          acceptedSalesPolicy,
+          deliveryMethod,
+        }),
+      });
+
+      const data = (await response.json()) as CheckoutResponse;
+
+      if (!response.ok || !data.checkoutUrl) {
+        throw new Error(data.error ?? "Impossible de lancer le paiement Stripe.");
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Une erreur est survenue.";
+      window.alert(message);
+    } finally {
+      setIsLoadingCheckout(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#fffaf6] via-[#fff1ee] to-[#fef6ff] text-[#4a3b47]">
@@ -127,6 +166,11 @@ export default function PanierPage() {
 
                     {item.customization && (
                       <div className="mt-4 w-full min-w-0 overflow-hidden rounded-2xl bg-[#fff7f6] p-3 text-sm text-[#5f4d5d] ring-1 ring-[#f6d4ce]">
+                        {item.customization.recipientName && (
+                          <p className="mb-2 w-full min-w-0 break-words text-sm font-semibold text-[#4a3b47]">
+                            🎁 Pour : {item.customization.recipientName}
+                          </p>
+                        )}
                         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-[#4a3b47]">
                           <span className="min-w-0 break-words">Scoop : {item.customization.scoopCount}</span>
                           {item.customization.scoopCount === 2 && <span className="shrink-0 rounded-full bg-[#ffe1d6] px-2 py-0.5 text-xs font-bold text-[#c96c72]">+20$</span>}
@@ -166,9 +210,9 @@ export default function PanierPage() {
               <span>Sous-total</span>
               <span className="font-semibold">{totalPrice.toFixed(2)} $</span>
             </div>
-            <div className="flex items-center justify-between text-sm text-[#5f4d5d]">
-              <span>Livraison</span>
-              <span className="font-semibold">{shipping.toFixed(2)} $</span>
+            <div className="flex items-center justify-between gap-3 text-sm text-[#5f4d5d]">
+              <span>Livraison{delivery ? ` — ${delivery.label}` : ""}</span>
+              <span className="shrink-0 font-semibold">{shipping.toFixed(2)} $</span>
             </div>
             <div className="my-2 h-px bg-gradient-to-r from-[#f7c7b8] via-[#f9d7d4] to-transparent" />
             <div className="flex items-center justify-between text-lg font-black text-[#4a3b47]">
@@ -178,13 +222,53 @@ export default function PanierPage() {
           </div>
 
           {items.length > 0 ? (
-            <a
-              href={`mailto:hello@univers-mikawaii.com?subject=${encodeURIComponent("Commande Univers Mikawaii")}&body=${orderMessage}`}
-              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f38fa4] via-[#f5a88a] to-[#efc86e] px-5 py-3.5 text-base font-bold text-white shadow-lg shadow-[#f4bbaf]/60 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#f4bbaf]/70"
-            >
-              <CreditCard size={18} />
-              Payer maintenant
-            </a>
+            <>
+              <fieldset className="mt-8 rounded-2xl bg-white/80 p-4 ring-1 ring-[#f4d0c9]">
+                <legend className="sr-only">Choisissez votre livraison</legend>
+                <p className="mb-3 text-sm font-bold text-[#4a3b47]">Choisissez votre livraison</p>
+                <div className="space-y-3">
+                  {DELIVERY_OPTIONS.map((option) => (
+                    <label key={option.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#f4d0c9] bg-white p-3 transition hover:bg-pink-50">
+                      <input
+                        type="checkbox"
+                        checked={deliveryMethod === option.id}
+                        onChange={() => setDeliveryMethod(option.id)}
+                        className="mt-1 h-4 w-4 accent-pink-500"
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-bold text-[#4a3b47]">{option.label}</span>
+                        <span className="mt-0.5 block text-sm font-bold text-[#d96b7d]">— {option.price === 0 ? "Gratuit" : `${option.price.toFixed(2)} $`}</span>
+                        <span className="mt-1 block text-xs leading-5 text-gray-600">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl bg-white/80 p-4 text-sm leading-6 ring-1 ring-[#f4d0c9]">
+                <input
+                  type="checkbox"
+                  checked={acceptedSalesPolicy}
+                  onChange={(event) => setAcceptedSalesPolicy(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-pink-500"
+                />
+                <span>
+                  Je comprends que les articles surprises sont choisis aléatoirement et j’accepte la{" "}
+                  <Link href="/politique-vente" target="_blank" className="font-bold text-[#c95067] underline underline-offset-2">
+                    politique de vente finale
+                  </Link>
+                  . Aucun remboursement, retour, échange ou annulation n’est offert, sous réserve des droits obligatoires prévus par la loi.
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={isLoadingCheckout || !acceptedSalesPolicy || !deliveryMethod}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f38fa4] via-[#f5a88a] to-[#efc86e] px-5 py-3.5 text-base font-bold text-white shadow-lg shadow-[#f4bbaf]/60 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#f4bbaf]/70 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+              >
+                <CreditCard size={18} />
+                {isLoadingCheckout ? "Redirection..." : "Payer maintenant"}
+              </button>
+            </>
           ) : (
             <Link
               href="/boutique"

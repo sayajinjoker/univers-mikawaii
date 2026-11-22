@@ -18,6 +18,7 @@ export default function ProductCustomizerPage() {
 
   const [scoopCount, setScoopCount] = useState<number>(1);
   const [notes, setNotes] = useState("");
+  const [recipientName, setRecipientName] = useState("");
   const [surpriseStar, setSurpriseStar] = useState<boolean | null>(null);
   const [socialMediaVideo, setSocialMediaVideo] = useState<boolean | null>(null);
 
@@ -29,6 +30,7 @@ export default function ProductCustomizerPage() {
 
     setScoopCount(item.customization.scoopCount ?? 1);
     setNotes(item.customization.notes ?? "");
+    setRecipientName(item.customization.recipientName ?? "");
     setSurpriseStar(item.customization.surpriseStar ?? false);
     setSocialMediaVideo(item.customization.socialMediaVideo ?? false);
   }, [editKey, items]);
@@ -57,6 +59,7 @@ export default function ProductCustomizerPage() {
     const customization = {
       scoopCount,
       notes,
+      recipientName,
       surpriseStar: Boolean(surpriseStar),
       socialMediaVideo: Boolean(socialMediaVideo),
     };
@@ -94,20 +97,20 @@ export default function ProductCustomizerPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#fffaf8] via-[#fff0f5] to-[#fdf7ff] px-6 py-10 text-[#4a3b47]">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto w-full max-w-7xl">
         <Link href="/boutique" className="inline-flex items-center gap-2 text-sm font-semibold text-[#d96b7d] hover:text-[#c95067]">
           <ArrowLeft size={18} />
           Retour à la boutique
         </Link>
 
-        <div className="mt-8 grid max-w-full gap-8 rounded-[32px] bg-white/80 p-6 shadow-[0_25px_50px_rgba(247,190,180,0.18)] ring-1 ring-pink-100 md:grid-cols-[1fr_1.2fr] md:p-8">
-          <div className="overflow-hidden rounded-[28px] bg-gradient-to-br from-pink-50 to-purple-50 p-3">
-            <div className="relative h-full min-h-[260px] overflow-hidden rounded-[22px] bg-white">
+        <div className="mt-8 grid w-full gap-8 rounded-[32px] bg-white/80 p-6 shadow-[0_25px_50px_rgba(247,190,180,0.18)] ring-1 ring-pink-100 md:grid-cols-[1.15fr_1fr] md:p-8 lg:grid-cols-[1.25fr_1fr] lg:gap-10">
+          <div className="min-w-0 overflow-hidden rounded-[28px] bg-gradient-to-br from-pink-50 to-purple-50 p-3">
+            <div className="relative h-full min-h-[320px] overflow-hidden rounded-[22px] bg-white md:min-h-[520px]">
               <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
             </div>
           </div>
 
-        <div className="max-w-full overflow-hidden">
+        <div className="min-w-0 w-full">
             <div className="mb-3 inline-flex items-center rounded-full bg-pink-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-pink-600">
               Personnalisation
             </div>
@@ -141,6 +144,22 @@ export default function ProductCustomizerPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-bold uppercase tracking-[0.16em] text-[#d96b7d]">
+                À qui est destiné ce colis?
+              </label>
+              <input
+                type="text"
+                value={recipientName}
+                onChange={(event) => setRecipientName(event.target.value)}
+                placeholder="Ex: Emma, Marie-Claude, Jean-Philippe…"
+                className="mt-3 w-full max-w-full rounded-2xl border border-[#f4d0c9] bg-white px-4 py-3 text-[#4a3b47] outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Le nom de la personne destinataire de cette boîte (peut être différent de l&apos;adresse de livraison).
+              </p>
             </div>
 
             <div className="mt-6">

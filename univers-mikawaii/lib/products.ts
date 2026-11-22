@@ -40,3 +40,7 @@ export const products: Product[] = [
 export function getProductById(productId: number) {
   return products.find((product) => product.id === productId);
 }
+
+export function getProductImageUrl(productId: number) {
+  return getProductById(productId)?.image ?? "";
+}

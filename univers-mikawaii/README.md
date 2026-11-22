@@ -16,6 +16,73 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Stripe Setup (Payments + Invoicing + Tax)
+
+1. Copy `.env.example` to `.env.local`.
+2. Add your Stripe test keys from the Stripe Dashboard.
+3. Keep `NEXT_PUBLIC_APP_URL=http://localhost:3000` for local development.
+
+Required variables:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+STRIPE_CURRENCY=cad
+STRIPE_ALLOWED_COUNTRIES=CA,US
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxx
+ORDER_NOTIFICATION_FROM=Univers Mikawaii <onboarding@resend.dev>
+ORDER_NOTIFICATION_EMAIL=univers.mikawaii@hotmail.com
+```
+
+Install dependencies (already added in `package.json`):
+
+```bash
+npm install
+```
+
+Run locally:
+
+```bash
+npm run dev
+```
+
+Current implementation details:
+
+- `app/api/checkout/route.ts`: creates Checkout Sessions with:
+  - server-side price recalculation (does not trust client price)
+  - Stripe Tax (`automatic_tax.enabled`)
+  - invoice creation (`invoice_creation.enabled`)
+  - customer creation (`customer_creation: "always"`)
+- `app/api/webhooks/stripe/route.ts`: verifies Stripe signatures and updates order status.
+- `app/api/webhooks/stripe/route.ts`: sends an internal email on paid orders via Resend.
+- `app/success/page.tsx`: verifies payment status from `session_id` before clearing cart.
+
+Dashboard checklist before production:
+
+1. Enable Stripe Tax in your account and configure tax registrations.
+2. Configure your business details, branding, and receipt settings.
+3. Add your production domain to `NEXT_PUBLIC_APP_URL` in deployment environment variables.
+4. Switch from test keys to live keys in deployment.
+
+Local webhook testing:
+
+```bash
+stripe login
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+Copy the `whsec_...` secret printed by `stripe listen` into `STRIPE_WEBHOOK_SECRET` in `.env.local`.
+
+Test flow:
+
+- Add products to cart and click `Payer maintenant` on `/panier`.
+- You are redirected to Stripe Checkout.
+- On success, Stripe redirects to `/success` and cart is cleared only after server-side payment confirmation.
+- On cancel, Stripe redirects to `/cancel` and the cart stays intact.
+
+Use Stripe test card `4242 4242 4242 4242` with any future expiry date and any CVC/ZIP in test mode.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
