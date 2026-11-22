@@ -1,0 +1,14 @@
+
+> univers-mikawaii@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.2.38:3000
+- Environments: .env.local
+✓ Ready in 354ms
+
+ GET /boutique 200 in 252ms (next.js: 106ms, application-code: 146ms)
+ GET /boutique 200 in 44ms (next.js: 4ms, application-code: 40ms)
+ HEAD / 200 in 60ms (next.js: 20ms, application-code: 40ms)
+^C^C
