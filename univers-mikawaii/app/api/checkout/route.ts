@@ -128,9 +128,6 @@ export async function POST(request: Request) {
           },
         },
       },
-      automatic_tax: {
-        enabled: true,
-      },
       excluded_payment_method_types: ["klarna", "paypal"],
       metadata: {
         orderId,
