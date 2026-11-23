@@ -392,6 +392,7 @@ async function sendViaResend(params: {
   text: string;
   html: string;
   idempotencyKey?: string;
+  replyTo?: string;
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ORDER_NOTIFICATION_FROM?.trim() || DEFAULT_NOTIFICATION_FROM;
@@ -416,6 +417,7 @@ async function sendViaResend(params: {
         subject: params.subject,
         text: params.text,
         html: params.html,
+        ...(params.replyTo ? { reply_to: params.replyTo } : {}),
       }),
     });
 
@@ -455,5 +457,6 @@ export async function sendBuyerOrderConfirmation(order: StoredOrder, buyerEmail:
     text: buildBuyerPlainTextBody(order),
     html: buildBuyerEmailHtml(order),
     idempotencyKey: `buyer-${order.stripeSessionId ?? order.id}`,
+    replyTo: getBusinessDetails().contactEmail,
   });
 }
