@@ -5,6 +5,7 @@ export type StoredOrderItem = EmailOrderItem;
 
 
 const DEFAULT_NOTIFICATION_EMAIL = "univers.mikawaii@hotmail.com";
+const DEFAULT_NOTIFICATION_FROM = "Univers Mikawaii <onboarding@resend.dev>";
 
 function getBusinessDetails() {
   return {
@@ -393,7 +394,7 @@ async function sendViaResend(params: {
   idempotencyKey?: string;
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.ORDER_NOTIFICATION_FROM;
+  const from = process.env.ORDER_NOTIFICATION_FROM?.trim() || DEFAULT_NOTIFICATION_FROM;
 
   if (!apiKey || !from) {
     const reason = "Missing RESEND_API_KEY or ORDER_NOTIFICATION_FROM.";
