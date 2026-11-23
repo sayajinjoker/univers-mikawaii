@@ -119,8 +119,18 @@ export async function POST(request: Request) {
           console.warn("[webhook] Could not retrieve invoice:", error);
         }
       }
-      await sendPaidOrderNotification(order);
-      if (buyerEmail) await sendBuyerOrderConfirmation(order, buyerEmail);
+      const vendorResult = await sendPaidOrderNotification(order);
+      console.log(`[webhook] Vendor email result for ${order.id}:`, vendorResult);
+      if (!vendorResult.sent) {
+        throw new Error(
+          `Notification vendeur non envoyée: ${"reason" in vendorResult ? vendorResult.reason : "raison inconnue"}`
+        );
+      }
+
+      if (buyerEmail) {
+        const buyerResult = await sendBuyerOrderConfirmation(order, buyerEmail);
+        console.log(`[webhook] Buyer email result for ${order.id}:`, buyerResult);
+      }
     }
     return NextResponse.json({ received: true });
   } catch (error) {

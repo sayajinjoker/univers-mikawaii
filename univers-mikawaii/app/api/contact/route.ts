@@ -17,10 +17,10 @@ function clean(value: unknown, maxLength: number) {
 
 export async function POST(request: Request) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.ORDER_NOTIFICATION_FROM;
+  const from = process.env.ORDER_NOTIFICATION_FROM?.trim() || "Univers Mikawaii <onboarding@resend.dev>";
   const recipient = process.env.ORDER_NOTIFICATION_EMAIL ?? "univers.mikawaii@hotmail.com";
 
-  if (!apiKey || !from) {
+  if (!apiKey) {
     return NextResponse.json({ error: "Le service de courriel n’est pas configuré." }, { status: 503 });
   }
 
