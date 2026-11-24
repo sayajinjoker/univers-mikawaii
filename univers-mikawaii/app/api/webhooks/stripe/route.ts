@@ -2,8 +2,17 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { sendBuyerOrderConfirmation, sendPaidOrderNotification, type EmailOrderItem, type StoredOrder } from "@/lib/order-notification";
+import { takeRateLimitToken } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-security";
 import { getStripeServer } from "@/lib/stripe-server";
 export const runtime = "nodejs";
+
+const WEBHOOK_RATE_LIMIT = {
+  namespace: "stripe-webhook",
+  max: 180,
+  windowMs: 60 * 1000,
+} as const;
+
 function parseCustomization(description?: string | null) {
   if (!description) return undefined;
   const parts = Object.fromEntries(description.split(" | ").map((part) => {
@@ -17,9 +26,26 @@ function parseCustomization(description?: string | null) {
     surpriseStar: parts["Etoile surprise"] === "Oui",
     socialMediaVideo: parts["Video reseaux"] === "Oui",
     recipientName: parts["Destinataire"]?.trim() || undefined,
+    audience: parts["Public"] === "Enfant" ? "child" as const : "adult" as const,
   };
 }
 export async function POST(request: Request) {
+  const rateLimit = takeRateLimitToken(getClientIp(request), WEBHOOK_RATE_LIMIT);
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      { error: "Trop de requetes webhook. Veuillez reessayer plus tard." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Limit": String(rateLimit.limit),
+          "X-RateLimit-Remaining": String(rateLimit.remaining),
+          "X-RateLimit-Reset": String(Math.ceil(rateLimit.resetAt / 1000)),
+        },
+      }
+    );
+  }
+
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) return NextResponse.json({ error: "Configuration Stripe manquante (STRIPE_WEBHOOK_SECRET)." }, { status: 500 });
   const stripe = getStripeServer();
@@ -38,6 +64,15 @@ export async function POST(request: Request) {
       const session = await stripe.checkout.sessions.retrieve(eventSession.id, {
         expand: ["line_items", "line_items.data.price.product"],
       });
+
+      if (session.payment_status !== "paid") {
+        return NextResponse.json({ received: true });
+      }
+
+      if (session.metadata?.fulfilledAt) {
+        return NextResponse.json({ received: true, skipped: "already_fulfilled" });
+      }
+
       const orderId = session.metadata?.orderId ?? session.client_reference_id ?? session.id;
       const buyerEmail = session.customer_details?.email ?? session.customer_email ?? undefined;
       const shipping = session.collected_information?.shipping_details;
@@ -53,7 +88,8 @@ export async function POST(request: Request) {
       const items: EmailOrderItem[] = [];
       for (const line of session.line_items?.data ?? []) {
         const product = typeof line.price?.product === "object" ? line.price.product : null;
-        const name = product && "name" in product ? product.name : line.description ?? "Article";
+        const catalogName = product && "metadata" in product ? product.metadata.catalogName : undefined;
+        const name = catalogName || (product && "name" in product ? product.name : line.description ?? "Article");
         if (name === "Livraison") continue;
         const quantity = line.quantity ?? 1;
         const unitAmount = line.price?.unit_amount ?? Math.round((line.amount_total ?? 0) / quantity);
@@ -108,20 +144,34 @@ export async function POST(request: Request) {
       if (invoiceId) {
         try {
           let invoice = await stripe.invoices.retrieve(invoiceId);
-          if (invoice.status !== "paid") {
-            try { invoice = await stripe.invoices.pay(invoiceId, { paid_out_of_band: true }); } catch (error) {
-              console.warn("[webhook] Invoice could not be forced paid:", error);
-            }
+          for (let attempt = 0; invoice.status !== "paid" && attempt < 2; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            invoice = await stripe.invoices.retrieve(invoiceId);
           }
-          order.stripeInvoicePdfUrl = invoice.invoice_pdf ?? undefined;
-          order.stripeInvoiceHostedUrl = invoice.hosted_invoice_url ?? undefined;
-        } catch (error) {
-          console.warn("[webhook] Could not retrieve invoice:", error);
-        }
-      }
+
+          if (session.payment_status === "paid" && invoice.status === "open") {
+            invoice = await stripe.invoices.pay(invoiceId, { paid_out_of_band: true });
+          }
+
+           if (invoice.status === "paid" && invoice.invoice_pdf) {
+             order.stripeInvoicePdfUrl = invoice.invoice_pdf;
+           } else {
+             console.warn(`[webhook] Invoice ${invoiceId} is not paid/finalized yet; no invoice link sent.`);
+           }
+         } catch (error) {
+           console.warn("[webhook] Could not retrieve invoice:", error);
+         }
+       }
       const vendorResult = await sendPaidOrderNotification(order);
       console.log(`[webhook] Vendor email result for ${order.id}:`, vendorResult);
       if (!vendorResult.sent) {
+        console.error("[webhook] Vendor email failed", {
+          eventId: event.id,
+          eventType: event.type,
+          orderId: order.id,
+          stripeSessionId: session.id,
+          vendorResult,
+        });
         throw new Error(
           `Notification vendeur non envoyée: ${"reason" in vendorResult ? vendorResult.reason : "raison inconnue"}`
         );
@@ -130,10 +180,33 @@ export async function POST(request: Request) {
       if (buyerEmail) {
         const buyerResult = await sendBuyerOrderConfirmation(order, buyerEmail);
         console.log(`[webhook] Buyer email result for ${order.id}:`, buyerResult);
+        if (!buyerResult.sent) {
+          console.warn("[webhook] Buyer email did not send", {
+            eventId: event.id,
+            eventType: event.type,
+            orderId: order.id,
+            stripeSessionId: session.id,
+            buyerEmail,
+            buyerResult,
+          });
+        }
       }
+
+      await stripe.checkout.sessions.update(session.id, {
+        metadata: {
+          ...session.metadata,
+          fulfilledAt: new Date().toISOString(),
+          fulfillmentChannel: "email",
+        },
+      });
     }
     return NextResponse.json({ received: true });
   } catch (error) {
+    console.error("[webhook] Processing failed", {
+      eventId: event.id,
+      eventType: event.type,
+      error: error instanceof Error ? error.message : "Erreur webhook inconnue.",
+    });
     return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur webhook inconnue." }, { status: 500 });
   }
 }

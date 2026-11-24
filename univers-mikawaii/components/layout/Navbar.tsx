@@ -13,7 +13,7 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-3">
           <span className="text-3xl">🌸</span>
           <span className="text-xl font-extrabold text-[#4A3B47] md:text-2xl">
-            Univers Mikawaii
+            L’Univers MiKawaii
           </span>
         </Link>
 

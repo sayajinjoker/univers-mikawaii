@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     body: JSON.stringify({
       from,
       to: [to],
-      subject: "Test email - Univers Mikawaii",
+      subject: "Test email - L’Univers MiKawaii",
       text: `Ceci est un email de test envoye a ${to} le ${new Date().toISOString()}.`,
     }),
   });

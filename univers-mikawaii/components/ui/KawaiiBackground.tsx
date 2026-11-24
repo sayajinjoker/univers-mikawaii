@@ -83,7 +83,7 @@ export default function Hero() {
           <br />
 
           <span className="text-[#FF75B8]">
-            Univers Mikawaii
+            L’Univers MiKawaii
           </span>
         </h1>
 

@@ -5,10 +5,51 @@ import { useState } from "react";
 import { ArrowLeft, CreditCard, Minus, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { DELIVERY_OPTIONS, getDeliveryOption, type DeliveryMethod } from "@/lib/delivery";
+import { getProductById, getScoopArticleCount } from "@/lib/products";
 
 interface CheckoutResponse {
   checkoutUrl?: string;
   error?: string;
+}
+
+const CHECKOUT_ATTEMPT_STORAGE_KEY = "mikawaii_checkout_attempt_v1";
+
+type CheckoutAttemptState = {
+  fingerprint: string;
+  idempotencyKey: string;
+  createdAt: number;
+};
+
+function resolveIdempotencyKey(fingerprint: string) {
+  const now = Date.now();
+
+  try {
+    const raw = window.sessionStorage.getItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as CheckoutAttemptState;
+      const isFresh = now - parsed.createdAt < 30 * 60 * 1000;
+      if (parsed.fingerprint === fingerprint && parsed.idempotencyKey && isFresh) {
+        return parsed.idempotencyKey;
+      }
+    }
+  } catch {
+    // Ignore broken sessionStorage payloads and regenerate a key.
+  }
+
+  const idempotencyKey = crypto.randomUUID();
+  const nextState: CheckoutAttemptState = {
+    fingerprint,
+    idempotencyKey,
+    createdAt: now,
+  };
+
+  try {
+    window.sessionStorage.setItem(CHECKOUT_ATTEMPT_STORAGE_KEY, JSON.stringify(nextState));
+  } catch {
+    // Ignore storage write errors and still proceed with this key.
+  }
+
+  return idempotencyKey;
 }
 
 export default function PanierPage() {
@@ -31,20 +72,24 @@ export default function PanierPage() {
     try {
       setIsLoadingCheckout(true);
 
+      const payload = {
+        items: items.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          customization: item.customization,
+        })),
+        acceptedSalesPolicy,
+        deliveryMethod,
+      };
+      const idempotencyKey = resolveIdempotencyKey(JSON.stringify(payload));
+
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-idempotency-key": idempotencyKey,
         },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            id: item.id,
-            quantity: item.quantity,
-            customization: item.customization,
-          })),
-          acceptedSalesPolicy,
-          deliveryMethod,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = (await response.json()) as CheckoutResponse;
@@ -173,7 +218,16 @@ export default function PanierPage() {
                         )}
                         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-[#4a3b47]">
                           <span className="min-w-0 break-words">Scoop : {item.customization.scoopCount}</span>
-                          {item.customization.scoopCount === 2 && <span className="shrink-0 rounded-full bg-[#ffe1d6] px-2 py-0.5 text-xs font-bold text-[#c96c72]">+20$</span>}
+                          <span className="shrink-0 rounded-full bg-[#ffe8f2] px-2 py-0.5 text-xs font-bold text-pink-700">
+                            {getScoopArticleCount(item.id, item.customization.scoopCount)} articles
+                          </span>
+                          {item.customization.scoopCount === 2 && <span className="shrink-0 rounded-full bg-[#ffe1d6] px-2 py-0.5 text-xs font-bold text-[#c96c72]">+{getProductById(item.id)?.secondScoopUpgrade ?? 0}$</span>}
+                        </div>
+
+                        <div className="mt-2">
+                          <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-bold text-pink-700">
+                            Pour : {item.customization.audience === "child" ? "Enfant" : "Adulte"}
+                          </span>
                         </div>
 
                         <div className="mt-2 flex w-full min-w-0 flex-wrap gap-2">
@@ -279,6 +333,13 @@ export default function PanierPage() {
           )}
         </aside>
       </main>
+
+      <div className="mx-auto max-w-6xl px-6 pb-8">
+        <p className="border-t border-[#f7d9d4] pt-5 text-center text-sm leading-6 text-[#6f5a68]">
+          <span className="font-bold text-[#4a3b47]">Adresse de l’entreprise :</span>{" "}
+          83-1175, rue de Chamonix, Québec, Québec (G1H 1E5)
+        </p>
+      </div>
     </div>
   );
 }

@@ -30,8 +30,11 @@ STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 STRIPE_CURRENCY=cad
 STRIPE_ALLOWED_COUNTRIES=CA,US
+CHECKOUT_ALLOWED_ORIGINS=http://localhost:3000
+CRON_SECRET=change_me_for_cron_auth
+RECON_ALERT_EMAIL=alerts@example.com
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxx
-ORDER_NOTIFICATION_FROM=Univers Mikawaii <onboarding@resend.dev>
+ORDER_NOTIFICATION_FROM="L’Univers MiKawaii <onboarding@resend.dev>"
 ORDER_NOTIFICATION_EMAIL=univers.mikawaii@hotmail.com
 ```
 
@@ -82,6 +85,45 @@ Test flow:
 - On cancel, Stripe redirects to `/cancel` and the cart stays intact.
 
 Use Stripe test card `4242 4242 4242 4242` with any future expiry date and any CVC/ZIP in test mode.
+
+Reconciliation check (paid sessions missing fulfillment marker):
+
+```bash
+npm run reconcile:stripe
+```
+
+Optional custom window (hours):
+
+```bash
+node ./scripts/reconcile-stripe-fulfillment.mjs 48
+```
+
+Backfill helper for historical paid sessions missing `fulfilledAt` metadata:
+
+```bash
+npm run reconcile:backfill -- --dry-run cs_test_xxx cs_test_yyy
+npm run reconcile:backfill -- cs_test_xxx cs_test_yyy
+```
+
+Cron reconciliation endpoint (for Vercel Cron):
+
+- Route: `GET /api/cron/reconcile?hours=24`
+- Auth header required: `Authorization: Bearer <CRON_SECRET>`
+- `vercel.json` includes a schedule every 6 hours.
+- Sends an alert email only when missing paid sessions are found.
+- Alert recipient uses `RECON_ALERT_EMAIL` (fallback: `ORDER_NOTIFICATION_EMAIL`).
+
+Local cron endpoint test:
+
+```bash
+npm run reconcile:cron:local
+```
+
+Local security smoke checks (origin allowlist, validation status codes, contact rate limit):
+
+```bash
+npm run smoke:security
+```
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

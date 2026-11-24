@@ -2,20 +2,23 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import {
   buildCustomizationDescription,
+  CheckoutValidationError,
   resolveCheckoutItems,
-  type CheckoutItemInput,
 } from "@/lib/checkout-pricing";
+import { parseCheckoutRequestBody } from "@/lib/api-schemas";
+import { takeRateLimitToken } from "@/lib/rate-limit";
+import { getClientIp, resolveTrustedCheckoutOrigin } from "@/lib/request-security";
 import { getStripeServer } from "@/lib/stripe-server";
-import { getDeliveryOption, type DeliveryMethod } from "@/lib/delivery";
-import { getProductImageUrl } from "@/lib/products";
-
-interface CheckoutRequestBody {
-  items?: CheckoutItemInput[];
-  acceptedSalesPolicy?: boolean;
-  deliveryMethod?: DeliveryMethod;
-}
+import { getDeliveryOption } from "@/lib/delivery";
+import { getProductById, getProductImageUrl, getScoopArticleCount } from "@/lib/products";
 
 export const runtime = "nodejs";
+
+const CHECKOUT_RATE_LIMIT = {
+  namespace: "checkout",
+  max: 12,
+  windowMs: 10 * 60 * 1000,
+} as const;
 
 function toCents(amount: number) {
   return Math.round(amount * 100);
@@ -23,22 +26,45 @@ function toCents(amount: number) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as CheckoutRequestBody;
-    const items = body.items ?? [];
-
-    if (body.acceptedSalesPolicy !== true) {
+    const rateLimit = takeRateLimitToken(getClientIp(request), CHECKOUT_RATE_LIMIT);
+    if (!rateLimit.ok) {
       return NextResponse.json(
-        { error: "Vous devez accepter la politique de vente finale avant le paiement." },
-        { status: 400 }
+        { error: "Trop de tentatives de paiement. Veuillez patienter avant de reessayer." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rateLimit.resetAt / 1000)),
+          },
+        }
       );
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Le panier est vide." }, { status: 400 });
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Requete invalide." }, { status: 400 });
     }
 
+    const parsed = parseCheckoutRequestBody(rawBody);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status ?? 400 });
+    }
+
+    const { items, deliveryMethod } = parsed.data;
+
+    const trustedOrigin = resolveTrustedCheckoutOrigin(request);
+    if (!trustedOrigin.ok) {
+      return NextResponse.json({ error: trustedOrigin.error }, { status: trustedOrigin.status });
+    }
+
+    const origin = trustedOrigin.origin;
+
     const resolvedItems = resolveCheckoutItems(items);
-    const delivery = getDeliveryOption(body.deliveryMethod);
+    const delivery = getDeliveryOption(deliveryMethod);
 
     if (!delivery) {
       return NextResponse.json(
@@ -50,7 +76,6 @@ export async function POST(request: Request) {
     const shipping = resolvedItems.length > 0 ? delivery.price : 0;
 
     const currency = (process.env.STRIPE_CURRENCY ?? "cad").toLowerCase();
-    const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const stripe = getStripeServer();
 
     const orderId = crypto.randomUUID();
@@ -61,10 +86,15 @@ export async function POST(request: Request) {
         currency,
         unit_amount: toCents(item.unitPrice),
         product_data: {
-          name: item.name,
-          description: buildCustomizationDescription(item.customization),
+          name: [
+            item.name,
+            getProductById(item.id)?.description,
+            buildCustomizationDescription(item.customization, getScoopArticleCount(item.id, item.customization?.scoopCount ?? 1))?.replaceAll(" | ", " · "),
+          ].filter(Boolean).join(" — ").slice(0, 250),
+          description: buildCustomizationDescription(item.customization, getScoopArticleCount(item.id, item.customization?.scoopCount ?? 1)),
           metadata: {
             productId: String(item.id),
+            catalogName: item.name,
             image: getProductImageUrl(item.id),
           },
         },
@@ -85,60 +115,51 @@ export async function POST(request: Request) {
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: lineItems,
-      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/cancel`,
-      locale: "fr",
-      billing_address_collection: "required",
-      custom_fields:
-        delivery.id === "mikawaii-express"
-          ? [
-              {
-                key: "delivery_sector",
-                label: { type: "custom", custom: "Secteur Mikawaii-Express" },
-                type: "dropdown",
-                dropdown: {
-                  options: [
-                    { label: "Limoilou", value: "limoilou" },
-                    { label: "Beauport", value: "beauport" },
-                    { label: "Charlesbourg", value: "charlesbourg" },
-                  ],
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        line_items: lineItems,
+        success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/cancel`,
+        locale: "fr",
+        billing_address_collection: "required",
+        custom_fields:
+          delivery.id === "mikawaii-express"
+            ? [
+                {
+                  key: "delivery_sector",
+                  label: { type: "custom", custom: "Secteur Mikawaii-Express" },
+                  type: "dropdown",
+                  dropdown: {
+                    options: [
+                      { label: "Limoilou", value: "limoilou" },
+                      { label: "Beauport", value: "beauport" },
+                      { label: "Charlesbourg", value: "charlesbourg" },
+                    ],
+                  },
                 },
-              },
-            ]
-          : undefined,
-      shipping_address_collection:
-        delivery.id === "mikawaii-express" || delivery.id === "canada-post"
-          ? { allowed_countries: ["CA"] }
-          : undefined,
-      customer_creation: "always",
-      invoice_creation: {
-        enabled: true,
-        invoice_data: {
-          description: `Commande ${orderId}`,
-          metadata: {
-            orderId,
-            salesPolicyAccepted: "true",
-            salesPolicyVersion: "2026-11-22",
-            deliveryMethod: delivery.id,
-            deliveryLabel: delivery.label,
-            deliveryPrice: shipping.toFixed(2),
-          },
+              ]
+            : undefined,
+        shipping_address_collection:
+          delivery.id === "mikawaii-express" || delivery.id === "canada-post"
+            ? { allowed_countries: ["CA"] }
+            : undefined,
+        customer_creation: "always",
+        excluded_payment_method_types: ["klarna", "paypal"],
+        metadata: {
+          orderId,
+          salesPolicyAccepted: "true",
+          salesPolicyVersion: "2026-11-22",
+          deliveryMethod: delivery.id,
+          deliveryLabel: delivery.label,
+          deliveryPrice: shipping.toFixed(2),
         },
+        client_reference_id: orderId,
       },
-      excluded_payment_method_types: ["klarna", "paypal"],
-      metadata: {
-        orderId,
-        salesPolicyAccepted: "true",
-        salesPolicyVersion: "2026-11-22",
-        deliveryMethod: delivery.id,
-        deliveryLabel: delivery.label,
-        deliveryPrice: shipping.toFixed(2),
-      },
-      client_reference_id: orderId,
-    });
+      {
+        idempotencyKey: request.headers.get("x-idempotency-key") ?? orderId,
+      }
+    );
 
     if (!session.url) {
       return NextResponse.json({ error: "Session Stripe invalide (URL manquante)." }, { status: 500 });
@@ -146,6 +167,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ checkoutUrl: session.url });
   } catch (error) {
+    if (error instanceof CheckoutValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     const message = error instanceof Error ? error.message : "Erreur Stripe inconnue.";
     return NextResponse.json({ error: message }, { status: 500 });
   }

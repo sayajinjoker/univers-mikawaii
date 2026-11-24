@@ -16,6 +16,7 @@ export interface CartCustomization {
   surpriseStar: boolean;
   socialMediaVideo: boolean;
   recipientName: string;
+  audience: "child" | "adult";
 }
 
 export interface CartItem extends Product {

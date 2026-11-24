@@ -11,8 +11,8 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  title: "Univers Mikawaii",
-  description: "Un univers rempli de petites merveilles kawaii ✨",
+  title: "L’Univers MiKawaii",
+  description: "Un univers rempli de petites merveilles MiKawaii ✨",
 };
 
 export default function RootLayout({
