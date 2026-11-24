@@ -109,7 +109,7 @@ Cron reconciliation endpoint (for Vercel Cron):
 
 - Route: `GET /api/cron/reconcile?hours=24`
 - Auth header required: `Authorization: Bearer <CRON_SECRET>`
-- `vercel.json` includes a schedule every 6 hours.
+- `vercel.json` uses a once-daily schedule (Hobby plan compatible).
 - Sends an alert email only when missing paid sessions are found.
 - Alert recipient uses `RECON_ALERT_EMAIL` (fallback: `ORDER_NOTIFICATION_EMAIL`).
 
