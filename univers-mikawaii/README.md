@@ -112,6 +112,7 @@ Cron reconciliation endpoint (for Vercel Cron):
 - `vercel.json` uses a once-daily schedule (Hobby plan compatible).
 - Sends an alert email only when missing paid sessions are found.
 - Alert recipient uses `RECON_ALERT_EMAIL` (fallback: `ORDER_NOTIFICATION_EMAIL`).
+- Alert subject/body includes environment context (`VERCEL_ENV`, `NODE_ENV`, `VERCEL_URL`, `NEXT_PUBLIC_APP_URL`).
 
 Local cron endpoint test:
 

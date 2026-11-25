@@ -14,6 +14,13 @@ type MissingSession = {
   customerEmail: string;
 };
 
+type RuntimeEnvironment = {
+  deploymentEnvironment: string;
+  nodeEnv: string;
+  vercelUrl: string;
+  appUrl: string;
+};
+
 function parseLookbackHours(request: Request) {
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("hours");
@@ -50,6 +57,7 @@ async function sendFailureAlertEmail(lookbackHours: number, missing: MissingSess
     return;
   }
 
+  const runtimeEnvironment = getRuntimeEnvironment();
   const checkedAt = new Date().toISOString();
   const top = missing.slice(0, 20);
   const bodyLines = top.map((item) => {
@@ -58,6 +66,11 @@ async function sendFailureAlertEmail(lookbackHours: number, missing: MissingSess
 
   const text = [
     "Reconciliation alert: paid sessions missing fulfilledAt",
+    "",
+    `deployment_environment: ${runtimeEnvironment.deploymentEnvironment}`,
+    `node_env: ${runtimeEnvironment.nodeEnv}`,
+    `vercel_url: ${runtimeEnvironment.vercelUrl}`,
+    `app_url: ${runtimeEnvironment.appUrl}`,
     "",
     `checked_at_utc: ${checkedAt}`,
     `lookback_hours: ${lookbackHours}`,
@@ -75,6 +88,10 @@ async function sendFailureAlertEmail(lookbackHours: number, missing: MissingSess
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5;color:#222;">
       <h2>Reconciliation alert: paid sessions missing fulfilledAt</h2>
+      <p><strong>Environment:</strong> ${runtimeEnvironment.deploymentEnvironment}<br/>
+      <strong>Node env:</strong> ${runtimeEnvironment.nodeEnv}<br/>
+      <strong>Vercel URL:</strong> ${runtimeEnvironment.vercelUrl}<br/>
+      <strong>App URL:</strong> ${runtimeEnvironment.appUrl}</p>
       <p><strong>Checked at (UTC):</strong> ${checkedAt}<br/>
       <strong>Lookback hours:</strong> ${lookbackHours}<br/>
       <strong>Missing count:</strong> ${missing.length}</p>
@@ -105,7 +122,7 @@ async function sendFailureAlertEmail(lookbackHours: number, missing: MissingSess
     body: JSON.stringify({
       from,
       to: [to],
-      subject: `[ALERT] Reconciliation missing fulfillment (${missing.length})`,
+      subject: `[ALERT][${runtimeEnvironment.deploymentEnvironment}] Reconciliation missing fulfillment (${missing.length})`,
       text,
       html,
     }),
@@ -122,8 +139,18 @@ async function sendFailureAlertEmail(lookbackHours: number, missing: MissingSess
 
   console.log("[cron:reconcile] Alert email sent", {
     to,
+    deploymentEnvironment: runtimeEnvironment.deploymentEnvironment,
     missingCount: missing.length,
   });
+}
+
+function getRuntimeEnvironment(): RuntimeEnvironment {
+  return {
+    deploymentEnvironment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown",
+    nodeEnv: process.env.NODE_ENV ?? "unknown",
+    vercelUrl: process.env.VERCEL_URL ?? "n/a",
+    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "n/a",
+  };
 }
 
 export async function GET(request: Request) {
@@ -135,6 +162,7 @@ export async function GET(request: Request) {
   const lookbackHours = parseLookbackHours(request);
   const createdGte = Math.floor(Date.now() / 1000) - (lookbackHours * 60 * 60);
   const stripe = getStripeServer();
+  const runtimeEnvironment = getRuntimeEnvironment();
 
   const missing: MissingSession[] = [];
 
@@ -164,16 +192,21 @@ export async function GET(request: Request) {
     console.error("[cron:reconcile] paid sessions missing fulfilledAt", {
       count: missing.length,
       lookbackHours,
+      deploymentEnvironment: runtimeEnvironment.deploymentEnvironment,
       sample: missing.slice(0, 5),
     });
     await sendFailureAlertEmail(lookbackHours, missing);
   } else {
-    console.log("[cron:reconcile] no paid-unfulfilled sessions", { lookbackHours });
+    console.log("[cron:reconcile] no paid-unfulfilled sessions", {
+      lookbackHours,
+      deploymentEnvironment: runtimeEnvironment.deploymentEnvironment,
+    });
   }
 
   return NextResponse.json(
     {
       ok: missing.length === 0,
+      environment: runtimeEnvironment,
       lookbackHours,
       missingCount: missing.length,
       missing,
