@@ -541,17 +541,61 @@ function createPaidInvoicePdf(order: StoredOrder) {
 }
 
 async function buildInvoiceAttachment(order: StoredOrder) {
+  const filename = `facture-${getOrderReference(order)}.pdf`;
+
+  const downloadStripeInvoicePdf = async () => {
+    if (!order.stripeInvoicePdfUrl) {
+      return undefined;
+    }
+
+    try {
+      const response = await fetch(order.stripeInvoicePdfUrl);
+      if (!response.ok) {
+        console.error("[order-notification] Stripe invoice PDF download failed.", {
+          orderId: order.id,
+          stripeSessionId: order.stripeSessionId,
+          status: response.status,
+        });
+        return undefined;
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return {
+        filename,
+        content: buffer.toString("base64"),
+      };
+    } catch (error) {
+      console.error("[order-notification] Stripe invoice PDF download threw.", {
+        orderId: order.id,
+        stripeSessionId: order.stripeSessionId,
+        error: error instanceof Error ? error.message : "Unknown Stripe invoice download error.",
+      });
+      return undefined;
+    }
+  };
+
   try {
     const invoicePdf = await createPaidInvoicePdf(order);
     return {
-      filename: `facture-${getOrderReference(order)}.pdf`,
+      filename,
       content: invoicePdf.toString("base64"),
     };
   } catch (error) {
-    console.error("[order-notification] Invoice PDF generation failed; sending email without attachment.", {
+    console.error("[order-notification] Invoice PDF generation failed; trying Stripe invoice PDF fallback.", {
       orderId: order.id,
       stripeSessionId: order.stripeSessionId,
       error: error instanceof Error ? error.message : "Unknown PDF error.",
+    });
+
+    const fallbackAttachment = await downloadStripeInvoicePdf();
+    if (fallbackAttachment) {
+      return fallbackAttachment;
+    }
+
+    console.error("[order-notification] Invoice attachment unavailable after all fallback attempts.", {
+      orderId: order.id,
+      stripeSessionId: order.stripeSessionId,
     });
     return undefined;
   }
