@@ -42,16 +42,16 @@ Legende des categories:
 
 - [ ] Activer la route Cron Vercel (`/api/cron/reconcile?hours=24`) avec `CRON_SECRET` - `Config Vercel`
 - [ ] Configurer le destinataire d'alerte reconciliation (`RECON_ALERT_EMAIL` ou fallback `ORDER_NOTIFICATION_EMAIL`) - `Config Vercel`, `Config Resend`
-- [ ] Ajouter une CSP dans `next.config.ts` - `Code`
+- [x] Ajouter une CSP dans `next.config.ts` - `Code`
 - [ ] Migrer le rate limiting de la memoire locale vers un store partage - `Code`, `Config Vercel`
-- [ ] Ameliorer la sortie de reconciliation (colonnes CSV/actions) - `Code`
-- [ ] Corriger l'avertissement `sizes` des images `next/image` avec `fill` - `Code`
+- [x] Ameliorer la sortie de reconciliation (colonnes CSV/actions) - `Code`
+- [x] Corriger l'avertissement `sizes` des images `next/image` avec `fill` - `Code`
 
 ## F) Tableau de suivi pre-release (Restant / En cours / Fait)
 
 | Type de verification | Restant | En cours | Fait |
 | --- | --- | --- | --- |
-| Code | CSP dans `next.config.ts`.<br>Rate limiting avec store partage.<br>Sortie reconciliation (CSV/actions).<br>`next/image` + `sizes` avec `fill`. | - | Route dev verrouillee en prod (`app/api/dev/test-email/route.ts`). |
+| Code | Rate limiting avec store partage. | - | Route dev verrouillee en prod (`app/api/dev/test-email/route.ts`).<br>CSP dans `next.config.ts`.<br>Sortie reconciliation (CSV/actions).<br>`next/image` + `sizes` avec `fill`. |
 | Validation developpeur / tests techniques | Retry checkout sans duplication de fulfillment.<br>Aucun paiement live non resolu sans fulfillment.<br>Surveillance active webhook/logs jour J.<br>Reception heartbeat cron (ou alerte). | - | Emails vendeur/acheteur testes OK.<br>Webhook `200` sur checkout.<br>Reconciliation executee/revue. |
 | Config production (Vercel/Stripe/Resend) | Secrets rotates.<br>Variables prod verifiees.<br>Cron + alertes reconciliation actives (`CRON_SECRET`, `RECON_ALERT_EMAIL`). | - | - |
 | Validation equipe Univers MiKawaii (operations) | Responsable reconciliation + backup.<br>SLA incident define.<br>SOP refund/litige.<br>Cadence de reconciliation manuelle.<br>Support client teste. | - | - |
@@ -65,8 +65,5 @@ Legende des categories:
 ## E) Items restants uniquement cote code (non coches)
 
 - Aucun item `Code` non coche dans les sections A, B ou C (bloqueurs de lancement).
-- [ ] Ajouter une CSP dans `next.config.ts` - `Code`
 - [ ] Migrer le rate limiting de la memoire locale vers un store partage - `Code`, `Config Vercel`
-- [ ] Ameliorer la sortie de reconciliation (colonnes CSV/actions) - `Code`
-- [ ] Corriger l'avertissement `sizes` des images `next/image` avec `fill` - `Code`
 
