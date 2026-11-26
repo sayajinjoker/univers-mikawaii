@@ -99,6 +99,15 @@ Optional custom window (hours):
 node ./scripts/reconcile-stripe-fulfillment.mjs 48
 ```
 
+CSV output (for triage/action tracking):
+
+```bash
+node ./scripts/reconcile-stripe-fulfillment.mjs 24 --csv
+node ./scripts/reconcile-stripe-fulfillment.mjs 24 --csv --out ./reconcile-report.csv
+```
+
+CSV includes `recommended_action` for each missing session.
+
 Backfill helper for historical paid sessions missing `fulfilledAt` metadata:
 
 ```bash

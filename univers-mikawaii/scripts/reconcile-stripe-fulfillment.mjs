@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import nextEnv from "@next/env";
+import { writeFileSync } from "node:fs";
 
 // Mirror Next.js env loading so local scripts can read .env.local without manual exports.
 const { loadEnvConfig } = nextEnv;
@@ -12,14 +13,91 @@ if (!stripeSecretKey) {
   process.exit(1);
 }
 
-const hoursArg = Number.parseInt(process.argv[2] ?? "24", 10);
-const lookbackHours = Number.isFinite(hoursArg) && hoursArg > 0 ? hoursArg : 24;
+const args = process.argv.slice(2);
+
+function parseOptions(rawArgs) {
+  let lookbackHours = 24;
+  let csv = false;
+  let outPath = null;
+
+  for (let i = 0; i < rawArgs.length; i += 1) {
+    const arg = rawArgs[i];
+    if (arg === "--csv") {
+      csv = true;
+      continue;
+    }
+
+    if (arg === "--out") {
+      outPath = rawArgs[i + 1] ?? null;
+      i += 1;
+      continue;
+    }
+
+    const parsed = Number.parseInt(arg, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      lookbackHours = parsed;
+    }
+  }
+
+  return { lookbackHours, csv, outPath };
+}
+
+const { lookbackHours, csv: csvEnabled, outPath } = parseOptions(args);
 const createdGte = Math.floor(Date.now() / 1000) - (lookbackHours * 60 * 60);
 
 const stripe = new Stripe(stripeSecretKey);
 
 let hasIssue = false;
 const checkedAt = new Date();
+const missingRows = [];
+
+function recommendedAction(session) {
+  if (session.livemode) {
+    return "replay_webhook_or_manual_follow_up";
+  }
+
+  return "replay_webhook_or_mark_test_resolved";
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function toCsv(rows) {
+  const headers = [
+    "session_id",
+    "order_id",
+    "created_utc",
+    "created_local",
+    "amount_total",
+    "currency",
+    "customer_email",
+    "fulfilled_at",
+    "livemode",
+    "recommended_action",
+  ];
+
+  const lines = [headers.map(csvEscape).join(",")];
+  for (const row of rows) {
+    lines.push(
+      [
+        row.sessionId,
+        row.orderId,
+        row.createdUtc,
+        row.createdLocal,
+        row.amountTotal,
+        row.currency,
+        row.customerEmail,
+        row.fulfilledAt,
+        row.livemode,
+        row.recommendedAction,
+      ].map(csvEscape).join(",")
+    );
+  }
+
+  return `${lines.join("\n")}\n`;
+}
 
 function formatUtc(value) {
   return new Date(value).toISOString();
@@ -58,7 +136,33 @@ for await (const session of stripe.checkout.sessions.list({
   console.log(`Created (local): ${formatLocal(createdMs)}`);
   console.log(`Amount total: ${session.amount_total ?? 0} ${session.currency ?? "cad"}`);
   console.log(`Customer email: ${session.customer_details?.email ?? session.customer_email ?? "n/a"}`);
+  const action = recommendedAction(session);
+  console.log(`Action recommandee: ${action}`);
   console.log("Status: PAID but missing fulfilledAt metadata");
+
+  missingRows.push({
+    sessionId: session.id,
+    orderId: session.metadata?.orderId ?? session.client_reference_id ?? "n/a",
+    createdUtc: formatUtc(createdMs),
+    createdLocal: formatLocal(createdMs),
+    amountTotal: session.amount_total ?? 0,
+    currency: (session.currency ?? "cad").toLowerCase(),
+    customerEmail: session.customer_details?.email ?? session.customer_email ?? "n/a",
+    fulfilledAt: session.metadata?.fulfilledAt ?? "",
+    livemode: session.livemode,
+    recommendedAction: action,
+  });
+}
+
+if (csvEnabled) {
+  const csvPayload = toCsv(missingRows);
+  if (outPath) {
+    writeFileSync(outPath, csvPayload, { encoding: "utf8" });
+    console.log(`CSV report written to: ${outPath}`);
+  } else {
+    console.log("CSV report:");
+    process.stdout.write(csvPayload);
+  }
 }
 
 if (hasIssue) {
