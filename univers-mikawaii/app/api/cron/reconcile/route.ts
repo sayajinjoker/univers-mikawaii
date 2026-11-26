@@ -21,6 +21,14 @@ type RuntimeEnvironment = {
   appUrl: string;
 };
 
+function parseBooleanEnv(value: string | undefined): boolean | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return undefined;
+}
+
 function parseLookbackHours(request: Request) {
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("hours");
@@ -144,6 +152,87 @@ async function sendFailureAlertEmail(lookbackHours: number, missing: MissingSess
   });
 }
 
+function shouldSendHeartbeatEmail(runtimeEnvironment: RuntimeEnvironment): boolean {
+  const configured = parseBooleanEnv(process.env.RECON_HEARTBEAT_ENABLED);
+  if (configured !== undefined) {
+    return configured;
+  }
+
+  // Safe default: heartbeat enabled in production only.
+  return runtimeEnvironment.deploymentEnvironment === "production";
+}
+
+async function sendSuccessHeartbeatEmail(lookbackHours: number, runtimeEnvironment: RuntimeEnvironment) {
+  if (!shouldSendHeartbeatEmail(runtimeEnvironment)) {
+    return;
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.ORDER_NOTIFICATION_FROM?.trim();
+  const to = process.env.RECON_ALERT_EMAIL?.trim() || process.env.ORDER_NOTIFICATION_EMAIL?.trim();
+
+  if (!apiKey || !from || !to) {
+    console.warn("[cron:reconcile] Heartbeat email skipped: missing RESEND_API_KEY, ORDER_NOTIFICATION_FROM, or recipient.");
+    return;
+  }
+
+  const checkedAt = new Date().toISOString();
+  const text = [
+    "Reconciliation heartbeat: execution successful",
+    "",
+    `deployment_environment: ${runtimeEnvironment.deploymentEnvironment}`,
+    `node_env: ${runtimeEnvironment.nodeEnv}`,
+    `vercel_url: ${runtimeEnvironment.vercelUrl}`,
+    `app_url: ${runtimeEnvironment.appUrl}`,
+    "",
+    `checked_at_utc: ${checkedAt}`,
+    `lookback_hours: ${lookbackHours}`,
+    "missing_count: 0",
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#222;">
+      <h2>Reconciliation heartbeat: execution successful</h2>
+      <p><strong>Environment:</strong> ${runtimeEnvironment.deploymentEnvironment}<br/>
+      <strong>Node env:</strong> ${runtimeEnvironment.nodeEnv}<br/>
+      <strong>Vercel URL:</strong> ${runtimeEnvironment.vercelUrl}<br/>
+      <strong>App URL:</strong> ${runtimeEnvironment.appUrl}</p>
+      <p><strong>Checked at (UTC):</strong> ${checkedAt}<br/>
+      <strong>Lookback hours:</strong> ${lookbackHours}<br/>
+      <strong>Missing count:</strong> 0</p>
+    </div>
+  `;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject: `[CRON][${runtimeEnvironment.deploymentEnvironment}] Reconciliation OK (0)`,
+      text,
+      html,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.text();
+    console.error("[cron:reconcile] Failed to send heartbeat email", {
+      status: response.status,
+      payload,
+    });
+    return;
+  }
+
+  console.log("[cron:reconcile] Heartbeat email sent", {
+    to,
+    deploymentEnvironment: runtimeEnvironment.deploymentEnvironment,
+  });
+}
+
 function getRuntimeEnvironment(): RuntimeEnvironment {
   return {
     deploymentEnvironment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown",
@@ -201,6 +290,7 @@ export async function GET(request: Request) {
       lookbackHours,
       deploymentEnvironment: runtimeEnvironment.deploymentEnvironment,
     });
+    await sendSuccessHeartbeatEmail(lookbackHours, runtimeEnvironment);
   }
 
   return NextResponse.json(

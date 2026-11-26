@@ -1,48 +1,72 @@
-# Nov 28 Launch Gate - Univers MiKawaii
+# Gate de Lancement 28 nov - Univers MiKawaii
 
-Use this checklist as the live go/no-go sign-off for launch day.
+Utiliser cette checklist comme validation go/no-go en direct le jour du lancement.
 
-Checked boxes below reflect what has already been validated in local/sandbox; re-confirm in production before go-live.
+Les cases cochees ci-dessous reflètent ce qui a deja ete valide en local/sandbox; revalider en production avant le go-live.
 
-## A) Critical Blockers (must all be YES)
+Legende des categories:
+- `Code` = necessite une modification de code
+- `Validation` = test/verification uniquement
+- `Texte/Politique` = wording legal/operations ou processus
+- `Config Vercel` / `Config Stripe` / `Config Resend` = configuration plateforme
 
-- [ ] Secrets rotated (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`)
-- [ ] Production env verified (`CHECKOUT_ALLOWED_ORIGINS`, `NEXT_PUBLIC_APP_URL`, Stripe/Resend vars)
-- [ ] Webhook end-to-end test passed (at least 2 paid test checkouts)
-- [x] Vendor + buyer emails sent successfully on test orders
-- [x] `/api/webhooks/stripe` returns 200 on real checkout events
-- [x] Reconciliation run completed and reviewed (`npm run reconcile:stripe`)
-- [ ] No unresolved paid-unfulfilled live orders (or each has documented manual resolution)
-- [x] Dev-only routes locked/disabled in production (`app/api/dev/test-email/route.ts`)
-- [ ] Legal pages reviewed for consistency (sales/final sale, delivery, privacy, business/contact details)
+## A) Bloqueurs critiques (tous doivent etre OUI)
 
-## B) Transactional Safety Checks (must all be YES)
+- [ ] Secrets rotates (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`) - `Config Stripe`, `Config Resend`, `Config Vercel`
+- [ ] Variables de production verifiees (`CHECKOUT_ALLOWED_ORIGINS`, `NEXT_PUBLIC_APP_URL`, vars Stripe/Resend) - `Config Vercel`, `Validation`
+- [ ] Test webhook de bout en bout reussi (au moins 2 paiements de test) - `Validation`, `Config Stripe`
+- [x] Emails vendeur + acheteur envoyes avec succes sur commandes de test - `Validation`, `Config Resend`
+- [x] `/api/webhooks/stripe` retourne 200 sur de vrais evenements checkout - `Validation`, `Config Stripe`
+- [x] Reconciliation executee et revue (`npm run reconcile:stripe`) - `Validation`
+- [ ] Aucun paiement live non resolu sans fulfillment (ou resolution manuelle documentee) - `Validation`, `Texte/Politique`
+- [x] Routes dev-only verrouillees/desactivees en production (`app/api/dev/test-email/route.ts`) - `Code`, `Validation`
+- [ ] Pages legales revues pour coherence (vente/vente finale, livraison, confidentialite, details entreprise/contact) - `Texte/Politique`
 
-- [ ] One retry scenario tested (refresh/re-submit) without duplicate fulfillment issue
-- [ ] Reconciliation owner assigned (name + backup)
-- [ ] Incident SLA defined (paid without `fulfilledAt` > 15 min = incident)
-- [ ] Refund/dispute SOP documented (who, where, response time)
+## B) Verifications de securite transactionnelle (tous doivent etre OUI)
 
-## C) Day-1 Operations (must all be YES)
+- [ ] Un scenario de retry teste (refresh/re-submit) sans duplication de fulfillment - `Validation`
+- [ ] Responsable reconciliation defini (titulaire + backup) - `Texte/Politique`
+- [ ] SLA incident defini (paiement sans `fulfilledAt` > 15 min = incident) - `Texte/Politique`
+- [ ] SOP refund/litige documentee (qui, ou, delai de reponse) - `Texte/Politique`
 
-- [ ] Stripe webhook deliveries monitored in dashboard
-- [ ] Vercel logs monitored for 5xx and webhook errors
-- [ ] Manual reconciliation cadence set (minimum daily; preferred every few hours)
-- [ ] If backlog exists, apply backfill/replay workflow (`npm run reconcile:backfill -- --dry-run <sessionIds>` then real run)
-- [ ] Support contact path tested (customer can reach business)
+## C) Operations jour J (tous doivent etre OUI)
 
+- [ ] Livraisons webhook Stripe surveillees dans le dashboard - `Config Stripe`, `Validation`
+- [ ] Logs Vercel surveilles (5xx et erreurs webhook) - `Config Vercel`, `Validation`
+- [ ] Heartbeat cron recu (email `[CRON][env] Reconciliation OK (0)` ou alerte en cas d'echec) - `Config Vercel`, `Config Resend`, `Validation`
+- [ ] Cadence de reconciliation manuelle definie (minimum quotidien; idealement toutes les quelques heures) - `Texte/Politique`
+- [ ] S'il y a un backlog, appliquer le workflow backfill/replay (`npm run reconcile:backfill -- --dry-run <sessionIds>` puis run reel) - `Validation`
+- [ ] Chemin de contact support teste (un client peut joindre l'entreprise) - `Validation`, `Texte/Politique`
 
-## D) Nice-to-Have (can be after launch)
+## D) Nice-to-have (possible apres lancement)
 
-- [ ] Enable Vercel Cron route (`/api/cron/reconcile?hours=24`) with `CRON_SECRET`
-- [ ] Configure reconciliation alert recipient (`RECON_ALERT_EMAIL` or fallback `ORDER_NOTIFICATION_EMAIL`)
-- [ ] Add CSP in `next.config.ts`
-- [ ] Move rate limiting from in-memory store to shared store
-- [ ] Improve reconciliation output (CSV/action columns)
-- [ ] Fix image `sizes` warning for `next/image` `fill`
+- [ ] Activer la route Cron Vercel (`/api/cron/reconcile?hours=24`) avec `CRON_SECRET` - `Config Vercel`
+- [ ] Configurer le destinataire d'alerte reconciliation (`RECON_ALERT_EMAIL` ou fallback `ORDER_NOTIFICATION_EMAIL`) - `Config Vercel`, `Config Resend`
+- [ ] Ajouter une CSP dans `next.config.ts` - `Code`
+- [ ] Migrer le rate limiting de la memoire locale vers un store partage - `Code`, `Config Vercel`
+- [ ] Ameliorer la sortie de reconciliation (colonnes CSV/actions) - `Code`
+- [ ] Corriger l'avertissement `sizes` des images `next/image` avec `fill` - `Code`
 
-## Final Decision Rule
+## F) Tableau de suivi pre-release (Restant / En cours / Fait)
 
-- GO: all items in sections A, B, and C are checked YES.
-- NO-GO: any unchecked item in sections A, B, or C.
+| Type de verification | Restant | En cours | Fait |
+| --- | --- | --- | --- |
+| Code | CSP dans `next.config.ts`.<br>Rate limiting avec store partage.<br>Sortie reconciliation (CSV/actions).<br>`next/image` + `sizes` avec `fill`. | - | Route dev verrouillee en prod (`app/api/dev/test-email/route.ts`). |
+| Validation developpeur / tests techniques | Retry checkout sans duplication de fulfillment.<br>Aucun paiement live non resolu sans fulfillment.<br>Surveillance active webhook/logs jour J.<br>Reception heartbeat cron (ou alerte). | - | Emails vendeur/acheteur testes OK.<br>Webhook `200` sur checkout.<br>Reconciliation executee/revue. |
+| Config production (Vercel/Stripe/Resend) | Secrets rotates.<br>Variables prod verifiees.<br>Cron + alertes reconciliation actives (`CRON_SECRET`, `RECON_ALERT_EMAIL`). | - | - |
+| Validation equipe Univers MiKawaii (operations) | Responsable reconciliation + backup.<br>SLA incident define.<br>SOP refund/litige.<br>Cadence de reconciliation manuelle.<br>Support client teste. | - | - |
+| Validation texte/politique/legal | Relecture et validation des pages legales (vente, livraison, confidentialite, contact). | - | - |
+
+## Regle de decision finale
+
+- GO: tous les items des sections A, B et C sont coches OUI.
+- NO-GO: au moins un item non coche dans A, B ou C.
+
+## E) Items restants uniquement cote code (non coches)
+
+- Aucun item `Code` non coche dans les sections A, B ou C (bloqueurs de lancement).
+- [ ] Ajouter une CSP dans `next.config.ts` - `Code`
+- [ ] Migrer le rate limiting de la memoire locale vers un store partage - `Code`, `Config Vercel`
+- [ ] Ameliorer la sortie de reconciliation (colonnes CSV/actions) - `Code`
+- [ ] Corriger l'avertissement `sizes` des images `next/image` avec `fill` - `Code`
 
