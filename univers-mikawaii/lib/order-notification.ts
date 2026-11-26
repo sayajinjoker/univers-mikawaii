@@ -1,6 +1,7 @@
 export interface EmailShippingAddress { name?: string; line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }
 import PDFDocument from "pdfkit";
 import { getScoopArticleCount } from "@/lib/products";
+import { getStripeServer } from "@/lib/stripe-server";
 
 export interface EmailOrderItem { id: number; name: string; unitPrice: number; quantity: number; imageUrl?: string; customization?: { scoopCount: number; notes: string; surpriseStar: boolean; socialMediaVideo: boolean; recipientName?: string; audience: "child" | "adult" } }
 export interface StoredOrder { id: string; status: "draft" | "paid" | "expired" | "failed"; currency: string; shippingAmount: number; deliveryMethod?: string; deliveryLabel?: string; deliverySector?: string; createdAt: string; updatedAt: string; items: EmailOrderItem[]; buyerEmail?: string; shippingAddress?: EmailShippingAddress; stripeSessionId?: string; stripeCustomerId?: string; stripePaymentIntentId?: string; stripeInvoiceId?: string; stripeInvoicePdfUrl?: string; stripeInvoiceHostedUrl?: string; stripePaymentStatus?: string }
@@ -543,17 +544,47 @@ function createPaidInvoicePdf(order: StoredOrder) {
 async function buildInvoiceAttachment(order: StoredOrder) {
   const filename = `facture-${getOrderReference(order)}.pdf`;
 
-  const downloadStripeInvoicePdf = async () => {
-    if (!order.stripeInvoicePdfUrl) {
+  const resolveStripeInvoicePdfUrl = async () => {
+    if (order.stripeInvoicePdfUrl) {
+      return order.stripeInvoicePdfUrl;
+    }
+
+    if (!order.stripeInvoiceId) {
       return undefined;
     }
 
     try {
-      const response = await fetch(order.stripeInvoicePdfUrl);
+      const stripe = getStripeServer();
+      let invoice = await stripe.invoices.retrieve(order.stripeInvoiceId);
+      for (let attempt = 0; !invoice.invoice_pdf && attempt < 2; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        invoice = await stripe.invoices.retrieve(order.stripeInvoiceId);
+      }
+      return invoice.invoice_pdf ?? undefined;
+    } catch (error) {
+      console.error("[order-notification] Could not resolve Stripe invoice PDF URL.", {
+        orderId: order.id,
+        stripeSessionId: order.stripeSessionId,
+        stripeInvoiceId: order.stripeInvoiceId,
+        error: error instanceof Error ? error.message : "Unknown Stripe invoice lookup error.",
+      });
+      return undefined;
+    }
+  };
+
+  const downloadStripeInvoicePdf = async () => {
+    const invoicePdfUrl = await resolveStripeInvoicePdfUrl();
+    if (!invoicePdfUrl) {
+      return undefined;
+    }
+
+    try {
+      const response = await fetch(invoicePdfUrl);
       if (!response.ok) {
         console.error("[order-notification] Stripe invoice PDF download failed.", {
           orderId: order.id,
           stripeSessionId: order.stripeSessionId,
+          stripeInvoiceId: order.stripeInvoiceId,
           status: response.status,
         });
         return undefined;
@@ -569,6 +600,7 @@ async function buildInvoiceAttachment(order: StoredOrder) {
       console.error("[order-notification] Stripe invoice PDF download threw.", {
         orderId: order.id,
         stripeSessionId: order.stripeSessionId,
+        stripeInvoiceId: order.stripeInvoiceId,
         error: error instanceof Error ? error.message : "Unknown Stripe invoice download error.",
       });
       return undefined;
