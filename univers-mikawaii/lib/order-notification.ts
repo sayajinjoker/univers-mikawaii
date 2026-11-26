@@ -1,15 +1,18 @@
 export interface EmailShippingAddress { name?: string; line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }
-export interface EmailOrderItem { id: number; name: string; unitPrice: number; quantity: number; imageUrl?: string; customization?: { scoopCount: number; notes: string; surpriseStar: boolean; socialMediaVideo: boolean; recipientName?: string } }
+import PDFDocument from "pdfkit";
+import { getScoopArticleCount } from "@/lib/products";
+
+export interface EmailOrderItem { id: number; name: string; unitPrice: number; quantity: number; imageUrl?: string; customization?: { scoopCount: number; notes: string; surpriseStar: boolean; socialMediaVideo: boolean; recipientName?: string; audience: "child" | "adult" } }
 export interface StoredOrder { id: string; status: "draft" | "paid" | "expired" | "failed"; currency: string; shippingAmount: number; deliveryMethod?: string; deliveryLabel?: string; deliverySector?: string; createdAt: string; updatedAt: string; items: EmailOrderItem[]; buyerEmail?: string; shippingAddress?: EmailShippingAddress; stripeSessionId?: string; stripeCustomerId?: string; stripePaymentIntentId?: string; stripeInvoiceId?: string; stripeInvoicePdfUrl?: string; stripeInvoiceHostedUrl?: string; stripePaymentStatus?: string }
 export type StoredOrderItem = EmailOrderItem;
 
 
 const DEFAULT_NOTIFICATION_EMAIL = "univers.mikawaii@hotmail.com";
-const DEFAULT_NOTIFICATION_FROM = "Univers Mikawaii <onboarding@resend.dev>";
+const DEFAULT_NOTIFICATION_FROM = "L’Univers MiKawaii <onboarding@resend.dev>";
 
 function getBusinessDetails() {
   return {
-    name: process.env.BUSINESS_LEGAL_NAME?.trim() || "Univers Mikawaii",
+    name: process.env.BUSINESS_LEGAL_NAME?.trim() || "L’Univers MiKawaii",
     contactEmail: process.env.BUSINESS_CONTACT_EMAIL?.trim() || DEFAULT_NOTIFICATION_EMAIL,
     phone: process.env.BUSINESS_CONTACT_PHONE?.trim(),
     address: process.env.BUSINESS_ADDRESS?.trim(),
@@ -63,7 +66,11 @@ function nl2br(value: string) {
 function customizationBadges(item: StoredOrderItem) {
   if (!item.customization) return [] as string[];
 
-  const badges: string[] = [`${item.customization.scoopCount} boule(s)`];
+  const badges: string[] = [
+    `${item.customization.scoopCount} boule(s)`,
+    `${getScoopArticleCount(item.id, item.customization.scoopCount)} articles`,
+    item.customization.audience === "child" ? "Pour un enfant" : "Pour un adulte",
+  ];
   if (item.customization.surpriseStar) badges.push("Etoile surprise");
   if (item.customization.socialMediaVideo) badges.push("Video reseaux sociaux");
 
@@ -73,7 +80,11 @@ function customizationBadges(item: StoredOrderItem) {
 function formatCustomization(item: StoredOrderItem) {
   if (!item.customization) return "";
 
-  const parts: string[] = [`boules: ${item.customization.scoopCount}`];
+  const parts: string[] = [
+    `boules: ${item.customization.scoopCount}`,
+    `articles: ${getScoopArticleCount(item.id, item.customization.scoopCount)}`,
+    `public: ${item.customization.audience === "child" ? "enfant" : "adulte"}`,
+  ];
   if (item.customization.surpriseStar) parts.push("etoile surprise");
   if (item.customization.socialMediaVideo) parts.push("video reseaux: oui");
   if (item.customization.recipientName?.trim())
@@ -231,7 +242,7 @@ function buildVendorEmailHtml(order: StoredOrder) {
       <div style="${CARD_STYLE}">
         <div style="${HEADER_STYLE}">
           <div style="font-size: 22px; font-weight: 700; color: #4c1d95;">Nouvelle commande payée</div>
-          <div style="font-size: 13px; color: #581c87; margin-top: 4px;">Univers Mikawaii</div>
+          <div style="font-size: 13px; color: #581c87; margin-top: 4px;">L’Univers MiKawaii</div>
         </div>
         <div style="${BODY_STYLE}">
           <div style="margin-bottom: 16px; font-size: 13px; color: #6b7280;">
@@ -253,7 +264,7 @@ function buildVendorEmailHtml(order: StoredOrder) {
           </div>
         </div>
         <div style="${FOOTER_STYLE}">
-          Univers Mikawaii &mdash; notification interne automatique<br/>
+          L’Univers MiKawaii &mdash; notification interne automatique<br/>
           ${buildBusinessFooterHtml()}
         </div>
       </div>
@@ -261,15 +272,10 @@ function buildVendorEmailHtml(order: StoredOrder) {
   `;
 }
 
-function buildInvoiceButtonHtml(order: StoredOrder) {
-  const url = order.stripeInvoicePdfUrl ?? order.stripeInvoiceHostedUrl;
-  if (!url) return "";
-
+function buildInvoiceNoticeHtml() {
   return `
-    <div style="text-align: center; margin: 20px 0;">
-      <a href="${escapeHtml(url)}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; text-decoration: none; font-weight: 600; padding: 10px 20px; border-radius: 999px; font-size: 13px;">
-        Télécharger la facture PDF
-      </a>
+    <div style="text-align: center; margin: 20px 0; padding: 12px; border-radius: 12px; background: #f5f3ff; color: #5b21b6; font-size: 13px; font-weight: 600;">
+      Votre facture marquée PAYÉE est jointe à ce courriel en format PDF.
     </div>
   `;
 }
@@ -284,7 +290,7 @@ function buildBuyerEmailHtml(order: StoredOrder) {
       <div style="${CARD_STYLE}">
         <div style="${HEADER_STYLE}">
           <div style="font-size: 22px; font-weight: 700; color: #4c1d95;">Merci pour votre commande !</div>
-          <div style="font-size: 13px; color: #581c87; margin-top: 4px;">Univers Mikawaii</div>
+          <div style="font-size: 13px; color: #581c87; margin-top: 4px;">L’Univers MiKawaii</div>
         </div>
         <div style="${BODY_STYLE}">
           <p>Bonjour,</p>
@@ -301,11 +307,11 @@ function buildBuyerEmailHtml(order: StoredOrder) {
           ${order.items.map((item) => buildItemHtml(item, order.currency)).join("")}
           ${buildTotalsHtml(order)}
           ${buildShippingAddressHtml(order)}
-          ${buildInvoiceButtonHtml(order)}
+          ${buildInvoiceNoticeHtml()}
           <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">
             Politique : toutes les ventes sont finales, sous réserve des recours obligatoires prévus par la loi. Conservez votre numéro de commande pour toute communication avec nous.
           </p>
-          <p style="margin-top: 16px;">Merci de votre confiance !<br/>L’équipe Univers Mikawaii</p>
+          <p style="margin-top: 16px;">Merci de votre confiance !<br/>L’équipe de L’Univers MiKawaii</p>
         </div>
         <div style="${FOOTER_STYLE}">
           ${buildBusinessFooterHtml()}
@@ -371,8 +377,8 @@ function buildBuyerPlainTextBody(order: StoredOrder) {
     `Total payé : ${formatCurrency(total, order.currency)}`,
     ...formatShippingAddressPlainText(order),
     "",
-    ...(order.stripeInvoicePdfUrl || order.stripeInvoiceHostedUrl ? [`Facture PDF : ${order.stripeInvoicePdfUrl ?? order.stripeInvoiceHostedUrl}`, ""] : []),
-    "Politique : toutes les ventes sont finales, sous réserve des recours obligatoires prévus par la loi.",
+    "La facture marquée PAYÉE est jointe à ce courriel en format PDF.",
+    "",
     `Pour toute question : ${business.contactEmail}${business.phone ? ` ou ${business.phone}` : ""}`,
     ...(business.address ? [`${business.name} — ${business.address}`] : []),
     "",
@@ -393,6 +399,7 @@ async function sendViaResend(params: {
   html: string;
   idempotencyKey?: string;
   replyTo?: string;
+  attachments?: Array<{ filename: string; content: string }>;
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ORDER_NOTIFICATION_FROM?.trim() || DEFAULT_NOTIFICATION_FROM;
@@ -417,6 +424,7 @@ async function sendViaResend(params: {
         subject: params.subject,
         text: params.text,
         html: params.html,
+        ...(params.attachments ? { attachments: params.attachments } : {}),
         ...(params.replyTo ? { reply_to: params.replyTo } : {}),
       }),
     });
@@ -438,25 +446,109 @@ async function sendViaResend(params: {
   }
 }
 
+function createPaidInvoicePdf(order: StoredOrder) {
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const doc = new PDFDocument({ size: "A4", margin: 48, info: { Title: `Facture ${getOrderReference(order)}` } });
+    const business = getBusinessDetails();
+    const itemsSubtotal = order.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const total = itemsSubtotal + order.shippingAmount;
+
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    doc.fillColor("#4a3b47").font("Helvetica-Bold").fontSize(22).text(business.name);
+    doc.moveDown(0.35).font("Helvetica-Bold").fontSize(17).fillColor("#15803d").text("FACTURE — PAYÉE");
+    doc.moveDown(0.55).font("Helvetica").fontSize(10).fillColor("#374151");
+    doc.text(`Numéro : ${getOrderReference(order)}`);
+    doc.text(`Date : ${formatDateTime(order.createdAt)}`);
+    doc.text(`Courriel du client : ${order.buyerEmail ?? "Non fourni"}`);
+    doc.text(`Mode de livraison : ${getDeliveryDisplayLabel(order)}`);
+    doc.moveDown();
+    doc.font("Helvetica-Bold").fontSize(12).text("Articles commandés");
+    doc.moveDown(0.35);
+
+    for (const item of order.items) {
+       doc.font("Helvetica-Bold").fontSize(10).text(
+         `${item.quantity} × ${item.name} — ${formatCurrency(item.unitPrice * item.quantity, order.currency)}`
+       );
+       if (item.customization) {
+         const c = item.customization;
+         const details = [
+           `${c.scoopCount} scoop${c.scoopCount > 1 ? "s" : ""}`,
+           `Articles : ${getScoopArticleCount(item.id, c.scoopCount)}`,
+           `Public : ${c.audience === "child" ? "Enfant" : "Adulte"}`,
+           `Étoile surprise : ${c.surpriseStar ? "Oui" : "Non"}`,
+           `Vidéo réseaux sociaux : ${c.socialMediaVideo ? "Oui" : "Non"}`,
+           c.recipientName?.trim() ? `Destinataire : ${c.recipientName.trim()}` : "",
+           c.notes.trim() ? `Préférences : ${c.notes.trim()}` : "",
+         ].filter(Boolean);
+
+         doc.font("Helvetica").fontSize(9).fillColor("#374151");
+         for (const detail of details) {
+           doc.text(`• ${detail}`, { indent: 10, width: 480, align: "left" });
+         }
+       }
+       doc.moveDown(0.55);
+    }
+
+    doc.moveDown(0.3).strokeColor("#e5e7eb").moveTo(48, doc.y).lineTo(547, doc.y).stroke();
+    doc.moveDown(0.45).fillColor("#374151").font("Helvetica").fontSize(10);
+    doc.text(`Sous-total : ${formatCurrency(itemsSubtotal, order.currency)}`, { align: "right" });
+    doc.text(`${getDeliveryDisplayLabel(order)} : ${formatCurrency(order.shippingAmount, order.currency)}`, { align: "right" });
+    doc.moveDown(0.25).font("Helvetica-Bold").fontSize(13).fillColor("#15803d");
+    doc.text(`TOTAL PAYÉ : ${formatCurrency(total, order.currency)}`, { align: "right" });
+    doc.moveDown(0.8).font("Helvetica").fontSize(9).fillColor("#6b7280");
+    doc.text(`Référence Stripe : ${order.stripePaymentIntentId ?? order.stripeSessionId ?? order.id}`);
+    doc.text("Aucun montant additionnel n’est dû sur cette commande.");
+
+    if (order.shippingAddress) {
+      const address = order.shippingAddress;
+      doc.moveDown().fillColor("#4a3b47").font("Helvetica-Bold").fontSize(10).text("Adresse de livraison");
+      doc.font("Helvetica").fontSize(9).fillColor("#374151");
+      [address.name, address.line1, address.line2, [address.city, address.state].filter(Boolean).join(", "), [address.postalCode, address.country].filter(Boolean).join(" ")]
+        .filter(Boolean)
+        .forEach((line) => doc.text(line!));
+    }
+
+    doc.moveDown(1).font("Helvetica").fontSize(8).fillColor("#6b7280");
+    doc.text([business.name, business.address, business.contactEmail, business.phone].filter(Boolean).join(" · "), { align: "center" });
+    doc.text("Cette facture confirme que le paiement a été reçu.", { align: "center" });
+    doc.end();
+  });
+}
+
 export async function sendPaidOrderNotification(order: StoredOrder) {
   const to = process.env.ORDER_NOTIFICATION_EMAIL ?? DEFAULT_NOTIFICATION_EMAIL;
+  const invoicePdf = await createPaidInvoicePdf(order);
 
   return sendViaResend({
     to,
-    subject: `Nouvelle commande payée ${getOrderReference(order)} – Univers Mikawaii`,
+    subject: `Nouvelle commande payée ${getOrderReference(order)} – L’Univers MiKawaii`,
     text: buildPlainTextBody(order),
     html: buildVendorEmailHtml(order),
     idempotencyKey: `vendor-${order.stripeSessionId ?? order.id}`,
+    attachments: [{
+      filename: `facture-${getOrderReference(order)}.pdf`,
+      content: invoicePdf.toString("base64"),
+    }],
   });
 }
 
 export async function sendBuyerOrderConfirmation(order: StoredOrder, buyerEmail: string) {
+  const invoicePdf = await createPaidInvoicePdf(order);
+
   return sendViaResend({
     to: buyerEmail,
-    subject: `Confirmation de commande ${getOrderReference(order)} – Univers Mikawaii`,
+    subject: `Confirmation de commande ${getOrderReference(order)} – L’Univers MiKawaii`,
     text: buildBuyerPlainTextBody(order),
     html: buildBuyerEmailHtml(order),
     idempotencyKey: `buyer-${order.stripeSessionId ?? order.id}`,
     replyTo: getBusinessDetails().contactEmail,
+    attachments: [{
+      filename: `facture-${getOrderReference(order)}.pdf`,
+      content: invoicePdf.toString("base64"),
+    }],
   });
 }

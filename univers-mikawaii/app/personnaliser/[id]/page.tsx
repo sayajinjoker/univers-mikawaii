@@ -19,8 +19,11 @@ export default function ProductCustomizerPage() {
   const [scoopCount, setScoopCount] = useState<number>(1);
   const [notes, setNotes] = useState("");
   const [recipientName, setRecipientName] = useState("");
+  const [audience, setAudience] = useState<"child" | "adult" | null>(null);
+  const [hoveredAudience, setHoveredAudience] = useState<"child" | "adult" | null>(null);
   const [surpriseStar, setSurpriseStar] = useState<boolean | null>(null);
   const [socialMediaVideo, setSocialMediaVideo] = useState<boolean | null>(null);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!editKey) return;
@@ -31,13 +34,14 @@ export default function ProductCustomizerPage() {
     setScoopCount(item.customization.scoopCount ?? 1);
     setNotes(item.customization.notes ?? "");
     setRecipientName(item.customization.recipientName ?? "");
+    setAudience(item.customization.audience ?? "adult");
     setSurpriseStar(item.customization.surpriseStar ?? false);
     setSocialMediaVideo(item.customization.socialMediaVideo ?? false);
   }, [editKey, items]);
 
   const finalPrice = useMemo(() => {
     if (!product) return 0;
-    let total = product.price + (scoopCount === 2 ? 20 : 0);
+    let total = product.price + (scoopCount === 2 ? product.secondScoopUpgrade : 0);
     if (surpriseStar) total += 5;
     return total;
   }, [product, scoopCount, surpriseStar]);
@@ -56,12 +60,35 @@ export default function ProductCustomizerPage() {
   }
 
   const handleSubmit = () => {
+    if (!recipientName.trim()) {
+      setValidationMessage("Indiquez à qui est destinée la boîte avant de continuer.");
+      return;
+    }
+
+    if (!audience) {
+      setValidationMessage("Choisissez Enfant ou Adulte pour personnaliser les surprises.");
+      return;
+    }
+
+    if (surpriseStar === null) {
+      setValidationMessage("Choisissez Oui ou Non pour l’étoile surprise.");
+      return;
+    }
+
+    if (socialMediaVideo === null) {
+      setValidationMessage("Choisissez Oui ou Non pour la vidéo sur les réseaux sociaux.");
+      return;
+    }
+
+    setValidationMessage(null);
+
     const customization = {
       scoopCount,
       notes,
-      recipientName,
-      surpriseStar: Boolean(surpriseStar),
-      socialMediaVideo: Boolean(socialMediaVideo),
+      recipientName: recipientName.trim(),
+      audience,
+      surpriseStar,
+      socialMediaVideo,
     };
 
     const nextItem = {
@@ -96,120 +123,194 @@ export default function ProductCustomizerPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#fffaf8] via-[#fff0f5] to-[#fdf7ff] px-6 py-10 text-[#4a3b47]">
+    <main className="min-h-screen bg-gradient-to-br from-[#fffaf8] via-[#fff0f5] to-[#fdf7ff] px-4 py-4 text-[#4a3b47] md:py-6">
       <div className="mx-auto w-full max-w-7xl">
-        <Link href="/boutique" className="inline-flex items-center gap-2 text-sm font-semibold text-[#d96b7d] hover:text-[#c95067]">
-          <ArrowLeft size={18} />
+        <Link href="/boutique" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#d96b7d] hover:text-[#c95067]">
+          <ArrowLeft size={16} />
           Retour à la boutique
         </Link>
 
-        <div className="mt-8 grid w-full gap-8 rounded-[32px] bg-white/80 p-6 shadow-[0_25px_50px_rgba(247,190,180,0.18)] ring-1 ring-pink-100 md:grid-cols-[1.15fr_1fr] md:p-8 lg:grid-cols-[1.25fr_1fr] lg:gap-10">
-          <div className="min-w-0 overflow-hidden rounded-[28px] bg-gradient-to-br from-pink-50 to-purple-50 p-3">
-            <div className="relative h-full min-h-[320px] overflow-hidden rounded-[22px] bg-white md:min-h-[520px]">
+        <div className="mt-4 grid w-full gap-4 rounded-[24px] bg-white/80 p-4 shadow-[0_20px_40px_rgba(247,190,180,0.16)] ring-1 ring-pink-100 md:grid-cols-[1fr_1.15fr] md:p-5 lg:grid-cols-[1.1fr_1fr] lg:gap-6">
+          <div className="min-w-0 overflow-hidden rounded-[22px] bg-gradient-to-br from-pink-50 to-purple-50 p-2">
+            <div className="relative h-full min-h-[280px] overflow-hidden rounded-[18px] bg-white md:min-h-[390px]">
               <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
             </div>
           </div>
 
-        <div className="min-w-0 w-full">
-            <div className="mb-3 inline-flex items-center rounded-full bg-pink-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-pink-600">
+          <div className="min-w-0 w-full">
+            <div className="mb-2 inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-pink-600">
               Personnalisation
             </div>
-            <h1 className="max-w-full break-words text-3xl font-black md:text-4xl">{product.name}</h1>
-            <p className="mt-3 max-w-full break-words text-lg text-gray-600">{product.description}</p>
+            <h1 className="max-w-full break-words text-2xl font-black md:text-3xl">{product.name}</h1>
+            <p className="mt-1.5 max-w-full break-words text-sm leading-5 text-gray-600">{product.description}</p>
 
-            <div className="mt-6 max-w-full overflow-hidden rounded-2xl bg-[#fff7f6] p-4 ring-1 ring-[#f8d2ce]">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d96b7d]">Choix de scoop</p>
+            <div className="mt-4 max-w-full overflow-hidden rounded-xl bg-[#fff7f6] p-3 ring-1 ring-[#f8d2ce]">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#d96b7d]">Choix de scoop</p>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 {[1, 2].map((option) => (
                   <button
                     key={option}
                     type="button"
                     onClick={() => setScoopCount(option)}
-                    className={`max-w-full rounded-2xl border px-4 py-3 text-left transition ${
+                    className={`max-w-full rounded-xl border px-3 py-2 text-left transition ${
                       scoopCount === option
-                        ? "border-pink-300 bg-pink-500 text-white shadow-lg shadow-pink-200"
+                        ? "border-pink-300 bg-pink-500 text-white shadow-md shadow-pink-200"
                         : "border-pink-200 bg-white text-[#4a3b47] hover:bg-pink-50"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold">{option} scoop{option > 1 ? "s" : ""}</span>
-                      {option === 2 && <span className="text-xs font-semibold">+20$</span>}
+                      <span className="text-sm font-bold">{option} scoop{option > 1 ? "s" : ""}</span>
+                      {option === 2 && <span className="text-[11px] font-semibold">+{product.secondScoopUpgrade}$</span>}
                     </div>
-                    <p className={`mt-1 block max-w-full break-all text-sm ${scoopCount === option ? "text-pink-50" : "text-gray-600"}`}>
-                      {option === 1
-                        ? "Une surprise ciblée."
-                        : "Mini boîte : petites scoops kawaii, moment magique."}
+                    <p className={`mt-0.5 block max-w-full break-words text-xs leading-4 ${scoopCount === option ? "text-pink-50" : "text-gray-600"}`}>
+                      {product.articlesPerScoop[option - 1]} articles
                     </p>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="mt-6">
-              <label className="block text-sm font-bold uppercase tracking-[0.16em] text-[#d96b7d]">
+            <div className="mt-4">
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#d96b7d]">
                 À qui est destiné ce colis?
               </label>
               <input
                 type="text"
+                required
+                maxLength={100}
                 value={recipientName}
                 onChange={(event) => setRecipientName(event.target.value)}
                 placeholder="Ex: Emma, Marie-Claude, Jean-Philippe…"
-                className="mt-3 w-full max-w-full rounded-2xl border border-[#f4d0c9] bg-white px-4 py-3 text-[#4a3b47] outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+                className="mt-2 w-full max-w-full rounded-xl border border-[#f4d0c9] bg-white px-3 py-2 text-sm text-[#4a3b47] outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
               />
-              <p className="mt-2 text-xs text-gray-500">
-                Le nom de la personne destinataire de cette boîte (peut être différent de l&apos;adresse de livraison).
+              <p className="mt-1 text-[11px] leading-4 text-gray-500">
+                Le nom peut être différent de celui de l’adresse de livraison.
               </p>
             </div>
 
-            <div className="mt-6">
-              <label className="block text-sm font-bold uppercase tracking-[0.16em] text-[#d96b7d]">
+            <div className="mt-4">
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#d96b7d]">
+                Pour qui est cette boîte?
+              </label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {([
+                  { value: "child" as const, label: "Enfant" },
+                  { value: "adult" as const, label: "Adulte" },
+                ]).map((option) => (
+                  <label
+                    key={option.value}
+                    onMouseEnter={() => {
+                      if (!audience) setHoveredAudience(option.value);
+                    }}
+                    onMouseLeave={() => setHoveredAudience(null)}
+                    onFocus={() => {
+                      if (!audience) setHoveredAudience(option.value);
+                    }}
+                    onBlur={() => setHoveredAudience(null)}
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition ${
+                      audience === option.value
+                        ? "border-pink-300 bg-pink-50 text-pink-600 ring-1 ring-pink-200"
+                        : "border-[#f4d0c9] bg-white text-[#4a3b47] hover:bg-pink-50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={audience === option.value}
+                      onChange={() => {
+                        setAudience(option.value);
+                        setHoveredAudience(null);
+                      }}
+                      className="h-4 w-4 accent-pink-500"
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+
+              {(hoveredAudience || audience) && (
+                <div
+                  aria-live="polite"
+                  className={`mt-2 min-h-[180px] rounded-xl border p-3 text-left ${
+                    (hoveredAudience || audience) === "child"
+                      ? "border-amber-200 bg-amber-50"
+                      : "border-purple-200 bg-purple-50"
+                  }`}
+                >
+                  {(hoveredAudience || audience) === "child" ? (
+                    <>
+                      <p className="text-sm font-black text-[#4a3b47]">Collection Enfants — 3 à 10 ans</p>
+                      <p className="mt-1 text-xs leading-5 text-gray-700">
+                        Un assortiment de petites surprises colorées et amusantes, spécialement sélectionnées pour les enfants!
+                      </p>
+                      <p className="mt-2 text-xs font-semibold leading-5 text-amber-800">
+                        ⚠️ Attention : risque d’étouffement. Certains articles contiennent de petites pièces. Ne convient pas aux enfants de moins de 3 ans. La surveillance d’un adulte est recommandée.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-black text-[#4a3b47]">Collection Ados et adultes — 11 ans et plus</p>
+                      <p className="mt-1 text-xs leading-5 text-gray-700">
+                        Des surprises mignonnes et tendance pour les plus grands! Papeterie, accessoires et petites découvertes kawaii, dans un style moins enfantin, mais toujours rempli de douceur.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+              <p className="mt-1 text-[11px] leading-4 text-gray-500">
+                Ce choix permet d’adapter les surprises au public prévu.
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#d96b7d]">
                 Préférences
               </label>
               <textarea
                 value={notes}
+                maxLength={280}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Ex: métier, couleurs préférées, occupation, thèmes à éviter…"
-                className="mt-3 min-h-[130px] w-full max-w-full resize-none rounded-2xl border border-[#f4d0c9] bg-white px-4 py-3 text-[#4a3b47] outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+                className="mt-2 min-h-[76px] w-full max-w-full resize-y rounded-xl border border-[#f4d0c9] bg-white px-3 py-2 text-sm text-[#4a3b47] outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
               />
             </div>
 
-            <div className="mt-6 max-w-full overflow-hidden rounded-2xl border border-[#f4d0c9] bg-[#fffaf8] p-4">
-              <p className="max-w-full break-words text-sm font-bold uppercase tracking-[0.16em] text-[#d96b7d]">Étoile surprise</p>
-              <p className="mt-1 max-w-full break-words text-sm text-gray-600">Ajoutez une petite surprise en bonus (+5$).</p>
+            <div className="mt-4 max-w-full overflow-hidden rounded-xl border border-[#f4d0c9] bg-[#fffaf8] p-3">
+              <p className="max-w-full break-words text-xs font-bold uppercase tracking-[0.14em] text-[#d96b7d]">Étoile surprise</p>
+              <p className="mt-0.5 max-w-full break-words text-xs leading-4 text-gray-600">Petite surprise en bonus (+5$).</p>
 
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 {[true, false].map((value) => (
                   <button
                     key={String(value)}
                     type="button"
                     onClick={() => setSurpriseStar(value)}
-                    className={`inline-flex max-w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+                    className={`inline-flex max-w-full items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
                       surpriseStar === value
                         ? "bg-amber-100 text-amber-600 ring-1 ring-amber-200"
                         : "bg-gray-100 text-gray-500 ring-1 ring-gray-200"
                     }`}
                   >
-                    {value ? <Star size={16} className="fill-current" /> : <Sparkles size={16} />}
+                    {value ? <Star size={14} className="fill-current" /> : <Sparkles size={14} />}
                     {value ? "Oui" : "Non"}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="mt-6 max-w-full overflow-hidden rounded-2xl border border-[#f4d0c9] bg-[#fffaf8] p-4">
-              <p className="max-w-full break-words text-sm font-bold uppercase tracking-[0.16em] text-[#d96b7d]">Vidéo pour nos médias sociaux</p>
-              <p className="mt-1 max-w-full break-words text-sm text-gray-600">Acceptez que votre boîte soit filmée pour nos réseaux.</p>
+            <div className="mt-4 max-w-full overflow-hidden rounded-xl border border-[#f4d0c9] bg-[#fffaf8] p-3">
+              <p className="max-w-full break-words text-xs font-bold uppercase tracking-[0.14em] text-[#d96b7d]">Vidéo pour nos médias sociaux</p>
+              <p className="mt-0.5 max-w-full break-words text-xs leading-4 text-gray-600">Acceptez que votre boîte soit filmée pour nos réseaux.</p>
 
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 {[true, false].map((value) => (
                   <button
                     key={`video-${String(value)}`}
                     type="button"
                     onClick={() => setSocialMediaVideo(value)}
-                    className={`max-w-full rounded-full px-4 py-2 text-sm font-bold transition ${
+                    className={`max-w-full rounded-full px-3 py-1.5 text-xs font-bold transition ${
                       socialMediaVideo === value
-                        ? "bg-pink-500 text-white shadow-md shadow-pink-200"
+                        ? "bg-pink-500 text-white shadow-sm shadow-pink-200"
                         : "bg-white text-[#4a3b47] ring-1 ring-pink-200 hover:bg-pink-50"
                     }`}
                   >
@@ -219,16 +320,16 @@ export default function ProductCustomizerPage() {
               </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#4a3b47] p-4 text-white">
+            <div className="mt-5 flex items-center justify-between gap-3 rounded-xl bg-[#4a3b47] p-3 text-white">
               <div>
-                <p className="text-sm uppercase tracking-[0.18em] text-pink-200">Prix</p>
-                <p className="mt-1 text-3xl font-black">{finalPrice.toFixed(2)} $</p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-pink-200">Prix</p>
+                <p className="mt-0.5 text-2xl font-black">{finalPrice.toFixed(2)} $</p>
               </div>
 
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-[#f6b76c] px-6 py-3 font-bold text-white shadow-lg shadow-pink-200 transition hover:-translate-y-0.5"
+                className="rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-[#f6b76c] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-pink-200 transition hover:-translate-y-0.5"
               >
                 Ajouter au panier
               </button>
@@ -236,6 +337,37 @@ export default function ProductCustomizerPage() {
           </div>
         </div>
       </div>
+
+      {validationMessage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#4a3b47]/45 px-5 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customization-validation-title"
+          onClick={() => setValidationMessage(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[28px] border border-pink-100 bg-white p-6 text-center shadow-[0_24px_70px_rgba(74,59,71,0.3)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-pink-600">
+              <Sparkles size={24} />
+            </div>
+            <h2 id="customization-validation-title" className="mt-4 text-xl font-black text-[#4a3b47]">
+              Presque terminé!
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600">{validationMessage}</p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => setValidationMessage(null)}
+              className="mt-5 w-full rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-[#f6b76c] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-pink-200 transition hover:-translate-y-0.5"
+            >
+              Continuer la personnalisation
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

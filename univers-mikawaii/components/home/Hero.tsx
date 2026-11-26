@@ -26,7 +26,7 @@ export default function Hero() {
         </h1>
 
         <p className="mt-6 max-w-2xl text-lg text-gray-600">
-          Des boîtes surprises soigneusement sélectionnées, remplies de trésors kawaii et de découvertes uniques.
+          Des boîtes surprises soigneusement sélectionnées, remplies de trésors MiKawaii et de découvertes uniques.
         </p>
 
         <Link

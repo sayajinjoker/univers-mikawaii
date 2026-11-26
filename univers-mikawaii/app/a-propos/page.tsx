@@ -17,7 +17,7 @@ export default function AboutPage() {
             <div className="space-y-6 text-lg leading-8 text-[#5d4f5d]">
               <h2 className="text-2xl font-black text-[#4a3b47]">Qui sommes-nous?</h2>
               <p>
-                Nous sommes Michelle et Kassie, un duo mère-fille qui partage un amour pour l'univers kawaii et tout ce qui est mignon!
+                Nous sommes Michelle et Kassie, un duo mère-fille qui partage un amour pour l’univers MiKawaii et tout ce qui est mignon!
               </p>
 
               <p>

@@ -13,7 +13,7 @@ export default function Boutique() {
               Notre Boutique
             </h1>
             <p className="mt-4 text-lg text-gray-600">
-              Découvrez nos boîtes surprises kawaii soigneusement sélectionnées
+              Découvrez nos boîtes surprises MiKawaii soigneusement sélectionnées
             </p>
           </div>
 

@@ -4,36 +4,28 @@ export interface Product {
   price: number;
   image: string;
   description: string;
+  secondScoopUpgrade: number;
+  articlesPerScoop: [number, number];
 }
 
 export const products: Product[] = [
   {
     id: 1,
-    name: "Grande boîte kawaii",
-    price: 29.99,
-    image: "/images/cute-3.jpg",
-    description: "Une grande boîte surprise remplie de trésors kawaii et de petites merveilles à découvrir.",
+    name: "Grande boîte MiKawaii",
+    price: 34,
+    image: "/images/big-box.jpg",
+    description: "Une grande boîte surprise remplie de trésors MiKawaii et de petites merveilles à découvrir.",
+    secondScoopUpgrade: 30,
+    articlesPerScoop: [20, 40],
   },
   {
     id: 2,
-    name: "Mini boîte kawaii",
-    price: 19.99,
-    image: "/images/cute-4.jpg",
-    description: "Une mini boîte surprise avec de petites scoops kawaii, idéale pour un petit moment de magie.",
-  },
-  {
-    id: 3,
-    name: "Grande boîte pour enfants",
-    price: 24.99,
-    image: "/images/cute.jpg",
-    description: "Une grande boîte surprise pour enfants, remplie de trésors colorés et joyeux à découvrir.",
-  },
-  {
-    id: 4,
-    name: "Mini boîte pour enfants",
-    price: 16.99,
-    image: "/images/cute-2.jpg",
-    description: "Une mini boîte pour enfants avec de petites scoops joyeuses et adorables.",
+    name: "Petite boîte MiKawaii",
+    price: 25,
+    image: "/images/small-box.jpg",
+    description: "Une petite boîte surprise avec de petites scoops MiKawaii, idéale pour un petit moment de magie.",
+    secondScoopUpgrade: 23,
+    articlesPerScoop: [15, 30],
   },
 ];
 
@@ -43,4 +35,10 @@ export function getProductById(productId: number) {
 
 export function getProductImageUrl(productId: number) {
   return getProductById(productId)?.image ?? "";
+}
+
+export function getScoopArticleCount(productId: number, scoopCount: number) {
+  const product = getProductById(productId);
+  if (!product) return 0;
+  return product.articlesPerScoop[scoopCount === 2 ? 1 : 0];
 }

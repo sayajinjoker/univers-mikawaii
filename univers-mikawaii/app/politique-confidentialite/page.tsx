@@ -3,207 +3,200 @@ import Link from "next/link";
 import { ArrowLeft, Mail } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité | Univers Mikawaii",
+  title: "Politique de confidentialité | L’Univers MiKawaii",
   description:
-    "Politique de confidentialité d’Univers Mikawaii : collecte, utilisation, conservation, droits et partage des renseignements personnels.",
+    "Politique de confidentialité de L’Univers MiKawaii : collecte, utilisation, conservation, protection et communication des renseignements personnels.",
 };
 
 const sections = [
   {
-    title: "Informations personnelles que nous recueillons ou traitons",
+    title: "Renseignements personnels recueillis",
     content: (
       <>
-        <p>
-          Lorsque vous utilisez notre site, nous pouvons recueillir les renseignements nécessaires pour
-          préparer une commande et répondre à vos demandes, notamment :
-        </p>
+        <p>Lorsque vous utilisez notre site Web, nous pouvons recueillir les renseignements nécessaires au traitement de vos demandes et de vos commandes, notamment :</p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
-          <li>nom, adresse de courriel et coordonnées de livraison;</li>
-          <li>nom du destinataire du colis;</li>
-          <li>choix de personnalisation, préférences et notes inscrites lors de la commande;</li>
-          <li>contenu du panier, produits choisis, montant, date et référence de la commande;</li>
-          <li>messages envoyés par le formulaire de contact;</li>
-          <li>consentement relatif à la vente finale et, le cas échéant, au tournage de votre boîte;</li>
-          <li>renseignements techniques de navigation et de connexion nécessaires au fonctionnement, à la sécurité et à la prévention des abus.</li>
+          <li>Votre nom, votre adresse courriel et vos coordonnées de livraison;</li>
+          <li>Le nom du destinataire d&apos;une commande;</li>
+          <li>Vos préférences de personnalisation et les notes que vous nous transmettez;</li>
+          <li>Les produits sélectionnés, le contenu du panier, les montants et les références de commande;</li>
+          <li>Les messages envoyés à partir de notre formulaire de contact;</li>
+          <li>Vos choix et autorisations concernant la réalisation et la diffusion éventuelle d&apos;une vidéo de votre commande;</li>
+          <li>Certains renseignements techniques nécessaires au fonctionnement et à la sécurité du site.</li>
         </ul>
-        <p className="mt-3">
-          Univers Mikawaii ne reçoit ni ne conserve normalement le numéro complet de votre carte de crédit.
-          Les renseignements de paiement sont saisis et traités dans l’environnement sécurisé de Stripe.
-        </p>
+        <p className="mt-3">Nous limitons la collecte aux renseignements nécessaires aux fins annoncées.</p>
+        <p className="mt-3">Les renseignements relatifs aux cartes de paiement sont traités par Stripe. L’Univers MiKawaii ne reçoit ni ne conserve normalement les numéros complets des cartes bancaires.</p>
       </>
     ),
   },
   {
-    title: "Sources d’informations personnelles",
+    title: "Provenance des renseignements",
     content: (
       <>
-        <p>Nous recevons principalement vos renseignements :</p>
+        <p>Nous obtenons principalement vos renseignements :</p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
-          <li>directement de vous, lorsque vous remplissez le panier, passez une commande ou utilisez le formulaire de contact;</li>
-          <li>de Stripe, lorsqu’un paiement est confirmé, échoue, est annulé ou fait l’objet d’une contestation;</li>
-          <li>de services techniques qui hébergent le site ou transmettent les courriels transactionnels;</li>
-          <li>du transporteur, lorsqu’un suivi de livraison ou une preuve de livraison est nécessaire.</li>
+          <li>Directement de vous, lorsque vous remplissez un formulaire ou effectuez un achat;</li>
+          <li>De Stripe, pour confirmer le statut d&apos;un paiement ou traiter une transaction;</li>
+          <li>De nos prestataires techniques, lorsque cela est nécessaire au fonctionnement du site et à l&apos;envoi des communications;</li>
+          <li>De nos partenaires de livraison, lorsqu&apos;un suivi ou une vérification est nécessaire.</li>
         </ul>
-        <p className="mt-3">
-          Nous conservons le contenu du panier temporairement dans le stockage de session de votre navigateur
-          afin que vous puissiez poursuivre votre visite. Ce stockage est généralement supprimé lorsque la session
-          du navigateur prend fin.
-        </p>
+        <p className="mt-3">Le contenu de votre panier peut être conservé temporairement dans le stockage de session de votre navigateur afin de faciliter votre navigation.</p>
       </>
     ),
   },
   {
-    title: "Comment nous utilisons vos informations personnelles",
+    title: "Utilisation des renseignements personnels",
     content: (
       <>
-        <p>Nous utilisons vos renseignements pour :</p>
+        <p>Nous utilisons vos renseignements afin de :</p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
-          <li>traiter et confirmer les paiements et commandes;</li>
-          <li>préparer, personnaliser, expédier et, si offert, suivre la livraison des colis;</li>
-          <li>envoyer les confirmations, factures, reçus et renseignements nécessaires concernant la commande;</li>
-          <li>répondre à vos questions et demandes de soutien;</li>
-          <li>traiter les problèmes de livraison, les produits endommagés et les contestations;</li>
-          <li>respecter nos obligations légales, comptables, fiscales et de prévention de la fraude;</li>
-          <li>maintenir la sécurité, diagnostiquer les incidents et prévenir les abus du site;</li>
-          <li>filmer ou publier une boîte seulement lorsque vous avez donné une autorisation distincte.</li>
+          <li>Traiter et confirmer vos commandes et paiements;</li>
+          <li>Préparer et personnaliser vos boîtes surprises;</li>
+          <li>Expédier les commandes et assurer leur suivi;</li>
+          <li>Vous transmettre les confirmations, factures et renseignements relatifs à vos achats;</li>
+          <li>Répondre à vos questions et demandes;</li>
+          <li>Traiter les réclamations, les problèmes de livraison et les contestations;</li>
+          <li>Respecter nos obligations légales, comptables et fiscales;</li>
+          <li>Assurer la sécurité du site et prévenir les utilisations frauduleuses.</li>
         </ul>
+        <p className="mt-3">Nous n&apos;utilisons pas vos renseignements personnels à d&apos;autres fins incompatibles sans respecter les exigences légales applicables.</p>
       </>
     ),
   },
   {
-    title: "Comment nous divulguons les informations personnelles",
+    title: "Vidéos des commandes et réseaux sociaux",
     content: (
       <>
-        <p>
-          Nous ne vendons pas vos renseignements personnels. Nous pouvons transmettre uniquement les renseignements
-          nécessaires aux catégories de prestataires suivantes :
-        </p>
+        <p>L’Univers MiKawaii peut proposer à ses clients de faire filmer la préparation de leur boîte surprise et de diffuser cette vidéo sur ses réseaux sociaux.</p>
+        <p className="mt-3">Cette participation est entièrement facultative.</p>
+        <p className="mt-3">Lorsqu&apos;une autorisation est nécessaire, elle est demandée séparément de l&apos;achat.</p>
+        <p className="mt-3">Un client peut donc commander une boîte sans accepter la diffusion d&apos;une vidéo.</p>
+        <p className="mt-3">Nous veillons à ne pas divulguer publiquement les renseignements personnels du client ou du destinataire, notamment son adresse, son numéro de téléphone ou ses renseignements de paiement.</p>
+        <p className="mt-3">Les modalités de retrait d&apos;une autorisation sont soumises aux droits applicables et aux limites liées à une diffusion déjà réalisée.</p>
+      </>
+    ),
+  },
+  {
+    title: "Communication des renseignements à des tiers",
+    content: (
+      <>
+        <p>Nous ne vendons pas vos renseignements personnels.</p>
+        <p className="mt-3">Nous pouvons communiquer certains renseignements nécessaires aux prestataires suivants :</p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
-          <li><strong>Stripe</strong>, pour le paiement, la facture et la prévention de la fraude;</li>
-          <li><strong>Resend</strong>, pour l’envoi des courriels de confirmation, de contact et de notification;</li>
-          <li>le fournisseur qui héberge ou exploite le site;</li>
-          <li>le transporteur ou le fournisseur d’étiquette nécessaire à la livraison;</li>
-          <li>les autorités, tribunaux ou conseillers professionnels lorsque la loi l’exige ou pour protéger des droits légitimes.</li>
+          <li>Stripe, pour le traitement des paiements, des factures et la prévention de la fraude;</li>
+          <li>Resend, pour la transmission des courriels transactionnels;</li>
+          <li>Notre fournisseur d&apos;hébergement et nos prestataires techniques, pour le fonctionnement du site;</li>
+          <li>Nos transporteurs et fournisseurs d&apos;étiquettes, pour l&apos;expédition et le suivi des colis;</li>
+          <li>Les autorités ou professionnels autorisés, lorsque la loi le permet ou l&apos;exige.</li>
         </ul>
+        <p className="mt-3">Nous limitons les renseignements communiqués à ce qui est nécessaire pour les services concernés.</p>
+        <p className="mt-3">Certains prestataires peuvent traiter ou conserver des renseignements à l&apos;extérieur du Québec ou du Canada. Ces communications sont encadrées conformément aux exigences légales applicables, notamment celles relatives à l&apos;évaluation des risques et à la protection des renseignements personnels.</p>
+      </>
+    ),
+  },
+  {
+    title: "Paiements sécurisés avec Stripe",
+    content: (
+      <>
+        <p>Les paiements effectués sur notre site sont traités par Stripe.</p>
+        <p className="mt-3">L’Univers MiKawaii reçoit les renseignements nécessaires à la gestion des commandes, notamment le statut du paiement, la référence de transaction et les coordonnées fournies lors de l&apos;achat.</p>
+        <p className="mt-3">Stripe peut également traiter certains renseignements conformément à ses propres obligations légales et à sa politique de confidentialité.</p>
         <p className="mt-3">
-          Certains prestataires peuvent traiter les données à l’extérieur du Québec ou du Canada. Ils appliquent
-          leurs propres mesures de sécurité et politiques. Nous limitons autant que possible les renseignements
-          communiqués à ce qui est nécessaire à leur fonction.
+          Pour en savoir davantage, vous pouvez consulter la politique de confidentialité de Stripe :{" "}
+          <a href="https://stripe.com/fr-ca/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[#c95067] underline underline-offset-2">
+            https://stripe.com/fr-ca/privacy
+          </a>
         </p>
       </>
     ),
   },
   {
-    title: "Relation avec Stripe",
+    title: "Témoins de connexion et technologies de navigation",
     content: (
       <>
-        <p>
-          Les données de paiement sont traitées par Stripe. Les personnes qui paient avec Stripe sont soumises à
-          la politique de confidentialité et aux conditions de Stripe. Stripe peut agir comme prestataire ou comme
-          responsable distinct du traitement selon le renseignement et l’utilisation concernés, notamment pour
-          le paiement, la lutte contre la fraude, la conformité et les services fournis à son réseau.
-        </p>
-        <p className="mt-3">
-          Univers Mikawaii reçoit de Stripe le résultat du paiement et les renseignements utiles à la commande,
-          tels que le statut, la référence de transaction, l’adresse de livraison, le nom et le courriel saisis par
-          le client. Pour exercer des droits directement liés aux renseignements détenus par Stripe, vous pouvez
-          aussi communiquer avec Stripe selon sa politique officielle.
-        </p>
+        <p>Notre site peut utiliser des mécanismes de stockage local ou de session nécessaires au fonctionnement du panier, au traitement des commandes et à la sécurité.</p>
       </>
     ),
   },
   {
-    title: "Données relatives aux enfants",
+    title: "Protection des renseignements des enfants",
     content: (
       <>
-        <p>
-          Le site et les achats ne sont pas destinés aux enfants qui ne possèdent pas la capacité légale de conclure
-          un achat. Univers Mikawaii ne cherche pas à recueillir sciemment des renseignements personnels auprès d’un
-          enfant sans le consentement approprié du parent ou du tuteur.
-        </p>
-        <p className="mt-3">
-          Si vous croyez qu’un enfant nous a transmis des renseignements sans autorisation, contactez-nous afin que
-          nous puissions examiner la demande et supprimer les renseignements lorsque cela est approprié.
-        </p>
+        <p>Nos collections peuvent contenir des produits destinés aux enfants de 3 à 10 ans. Toutefois, notre site de vente s&apos;adresse aux personnes légalement autorisées à effectuer des achats.</p>
+        <p className="mt-3">Nous ne cherchons pas à recueillir directement des renseignements personnels auprès d&apos;enfants de moins de 14 ans sans le consentement requis du titulaire de l&apos;autorité parentale ou du tuteur.</p>
+        <p className="mt-3">Si vous croyez qu&apos;un enfant nous a transmis des renseignements personnels sans autorisation, veuillez communiquer avec nous afin que nous puissions examiner la situation et prendre les mesures appropriées.</p>
       </>
     ),
   },
   {
-    title: "Sécurité et conservation de vos informations",
+    title: "Sécurité des renseignements",
     content: (
       <>
-        <p>
-          Nous appliquons des mesures raisonnables adaptées à la sensibilité des renseignements : accès aux systèmes
-          protégé, communications sécurisées, vérification des webhooks de paiement, limitation des accès et recours à
-          des fournisseurs reconnus. Aucun système n’étant entièrement sans risque, nous ne pouvons garantir une
-          sécurité absolue.
-        </p>
-        <p className="mt-3">
-          Les renseignements sont conservés seulement pendant la période nécessaire à la finalité pour laquelle ils
-          ont été recueillis, au traitement des commandes, à la preuve des transactions, aux obligations comptables et
-          fiscales, à la prévention de la fraude, ou à la résolution de réclamations et litiges. Ils sont ensuite
-          supprimés, anonymisés ou archivés de façon sécuritaire selon les obligations applicables.
-        </p>
+        <p>Nous mettons en place des mesures de sécurité adaptées à la nature des renseignements traités et aux risques associés.</p>
+        <p className="mt-3">Ces mesures peuvent comprendre la protection des accès, l&apos;utilisation de connexions sécurisées, la limitation des accès autorisés et le recours à des prestataires offrant des mécanismes de sécurité appropriés.</p>
+        <p className="mt-3">Aucun système informatique ne pouvant garantir une sécurité absolue, nous révisons nos pratiques lorsque cela est nécessaire.</p>
       </>
     ),
   },
   {
-    title: "Vos droits et vos choix",
+    title: "Conservation et suppression des renseignements",
     content: (
       <>
-        <p>Sous réserve des limites prévues par la loi, vous pouvez demander :</p>
+        <p>Nous conservons les renseignements personnels uniquement pendant la période nécessaire aux fins pour lesquelles ils ont été recueillis, sous réserve de nos obligations légales, fiscales, comptables ou contractuelles.</p>
+        <p className="mt-3">Lorsque leur conservation n&apos;est plus nécessaire, les renseignements sont détruits ou anonymisés conformément aux exigences applicables.</p>
+        <p className="mt-3">Certaines informations relatives aux transactions peuvent devoir être conservées pendant une période plus longue pour satisfaire aux obligations légales.</p>
+      </>
+    ),
+  },
+  {
+    title: "Vos droits concernant vos renseignements",
+    content: (
+      <>
+        <p>Sous réserve des conditions et exceptions prévues par la loi, vous pouvez notamment :</p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
-          <li>à connaître les renseignements personnels que nous détenons à votre sujet;</li>
-          <li>à accéder à ces renseignements ou à en obtenir une copie;</li>
-          <li>la correction de renseignements inexacts, incomplets ou équivoques;</li>
-          <li>la suppression ou la cessation d’utilisation lorsque la conservation n’est plus nécessaire;</li>
-          <li>des précisions sur l’utilisation ou le partage de vos renseignements;</li>
-          <li>le retrait de votre consentement lorsqu’il est le fondement du traitement, pour l’avenir.</li>
+          <li>Demander l&apos;accès aux renseignements personnels que nous détenons à votre sujet;</li>
+          <li>Demander la rectification de renseignements inexacts, incomplets ou équivoques;</li>
+          <li>Demander des renseignements sur l&apos;utilisation et la communication de vos données;</li>
+          <li>Retirer votre consentement lorsque la loi le permet;</li>
+          <li>Demander la cessation de certaines utilisations ou la suppression de renseignements, lorsque les conditions légales sont réunies;</li>
+          <li>Demander, dans les cas prévus par la loi, la communication de certains renseignements informatisés dans un format technologique structuré et couramment utilisé.</li>
         </ul>
+        <p className="mt-3">Les demandes d&apos;accès et de rectification sont traitées dans les délais prévus par la loi, généralement dans les 30 jours suivant leur réception.</p>
+        <p className="mt-3">Nous pouvons demander une vérification raisonnable de votre identité avant de communiquer ou de modifier des renseignements.</p>
+      </>
+    ),
+  },
+  {
+    title: "Questions et plaintes",
+    content: (
+      <>
+        <p>Si vous avez des questions ou des préoccupations concernant la protection de vos renseignements personnels, nous vous invitons à communiquer avec notre responsable de la protection des renseignements personnels.</p>
+        <p className="mt-3">Vous pouvez également déposer une plainte auprès de la Commission d&apos;accès à l&apos;information du Québec lorsque la situation relève de sa compétence.</p>
         <p className="mt-3">
-          Nous pouvons demander des renseignements raisonnables pour confirmer votre identité. Une demande sera
-          traitée dans un délai raisonnable et une réponse expliquera les limites ou obligations qui empêchent d’y
-          donner suite, le cas échéant. Le retrait d’un consentement peut limiter un service et ne s’applique pas à
-          un traitement déjà réalisé ou exigé par la loi.
+          Site Web :{" "}
+          <a href="https://www.cai.gouv.qc.ca" target="_blank" rel="noreferrer" className="font-semibold text-[#c95067] underline underline-offset-2">
+            https://www.cai.gouv.qc.ca
+          </a>
         </p>
       </>
     ),
   },
   {
-    title: "Plaintes",
+    title: "Modifications de la politique",
     content: (
       <>
-        <p>
-          Si vous avez une inquiétude concernant cette politique ou la manière dont vos renseignements sont
-          traités, utilisez d’abord notre formulaire de contact. Nous chercherons à examiner et résoudre la plainte.
-        </p>
-        <p className="mt-3">
-          Si vous n’êtes pas satisfait de notre réponse au Québec, vous pouvez communiquer avec la Commission
-          d’accès à l’information du Québec. Une plainte relevant d’une compétence fédérale peut également être
-          adressée au Commissariat à la protection de la vie privée du Canada.
-        </p>
-        <Link href="/contact" className="mt-4 inline-flex items-center gap-2 rounded-full bg-pink-500 px-5 py-3 font-bold text-white">
-          <Mail size={18} />
-          Formulaire de contact
-        </Link>
+        <p>Nous pouvons modifier cette politique afin de tenir compte de l&apos;évolution de nos activités, de nos services, de nos fournisseurs ou des exigences légales.</p>
+        <p className="mt-3">La date de la dernière mise à jour figure au début du document.</p>
+        <p className="mt-3">Lorsque la loi l&apos;exige, les modifications importantes feront l&apos;objet d&apos;une information ou d&apos;un consentement approprié.</p>
       </>
     ),
   },
   {
-    title: "Modifications de cette Politique de confidentialité",
+    title: "Nous joindre",
     content: (
-      <>
-        <p>
-          Nous pouvons modifier cette politique pour refléter l’évolution du site, des fournisseurs, des services ou
-          des exigences légales. La date de mise à jour sera indiquée au début de cette page. Toute modification
-          importante applicable aux renseignements sera communiquée de façon raisonnable avant d’entrer en vigueur,
-          lorsque la loi l’exige.
-        </p>
-        <p className="mt-3">
-          Nous vous recommandons de consulter cette page périodiquement. La poursuite de l’utilisation du site après
-          une modification ne remplace pas un consentement distinct lorsque celui-ci est légalement requis.
-        </p>
-      </>
+      <Link href="/contact" className="inline-flex items-center gap-2 rounded-full bg-pink-500 px-5 py-3 font-bold text-white">
+        <Mail size={18} />
+        Formulaire de contact
+      </Link>
     ),
   },
 ];
@@ -218,41 +211,27 @@ export default function PrivacyPolicyPage() {
         </Link>
 
         <article className="mt-8 rounded-[32px] bg-white/90 p-6 shadow-[0_25px_50px_rgba(247,190,180,0.18)] ring-1 ring-pink-100 md:p-10">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-pink-500">Protection des renseignements</p>
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-pink-500">L’Univers MiKawaii</p>
           <h1 className="mt-2 text-3xl font-black md:text-4xl">Politique de confidentialité</h1>
           <p className="mt-4 text-sm text-gray-500">Dernière mise à jour : 22 novembre 2026</p>
 
           <p className="mt-7 leading-7 text-gray-700">
-            Univers Mikawaii accorde de l’importance à la protection de votre vie privée. Cette politique explique
-            quels renseignements personnels nous recueillons, pourquoi nous les utilisons, avec qui nous pouvons les
-            partager et quels choix s’offrent à vous lorsque vous utilisez notre site ou achetez une boîte surprise.
+            L’Univers MiKawaii accorde une grande importance à la protection de votre vie privée et de vos renseignements personnels.
+          </p>
+          <p className="mt-3 leading-7 text-gray-700">
+            Cette politique explique quels renseignements nous recueillons, pourquoi nous les utilisons, avec qui nous pouvons les partager, comment nous les protégeons et quels sont vos droits lorsque vous naviguez sur notre site, communiquez avec nous ou effectuez un achat.
           </p>
 
           <div className="mt-9 space-y-8">
             {sections.map((section, index) => (
               <section key={section.title} className="border-t border-pink-100 pt-7 first:border-t-0 first:pt-0">
-                <h2 className="text-xl font-extrabold text-[#4a3b47]">
-                  {index + 1}. {section.title}
-                </h2>
+                <h2 className="text-xl font-extrabold text-[#4a3b47]">{index + 1}. {section.title}</h2>
                 <div className="mt-3 leading-7 text-gray-700">{section.content}</div>
               </section>
             ))}
           </div>
-
-          <section className="mt-9 rounded-2xl border border-pink-200 bg-pink-50 p-5">
-            <h2 className="text-xl font-extrabold text-[#4a3b47]">Responsable des questions de confidentialité</h2>
-            <p className="mt-2 leading-7 text-gray-700">
-              Pour toute question, correction, accès, suppression, plainte ou retrait de consentement, utilisez notre
-              formulaire de contact en mentionnant clairement « Confidentialité » dans votre message.
-            </p>
-            <Link href="/contact" className="mt-4 inline-flex items-center gap-2 font-bold text-[#c95067] underline underline-offset-2">
-              <Mail size={17} />
-              Contacter Univers Mikawaii
-            </Link>
-          </section>
         </article>
       </div>
     </main>
   );
 }
-

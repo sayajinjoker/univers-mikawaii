@@ -7,10 +7,10 @@ export default function Footer() {
         {/* Brand */}
         <div>
           <h2 className="text-2xl font-extrabold text-[#4A3B47]">
-            🌸 Univers Mikawaii
+            🌸 L’Univers MiKawaii
           </h2>
           <p className="mt-3 max-w-xs text-sm text-[#5E5060]">
-            Découvrez des trésors kawaii soigneusement sélectionnés.
+            Découvrez des trésors MiKawaii soigneusement sélectionnés.
           </p>
         </div>
 
@@ -64,7 +64,7 @@ export default function Footer() {
       </div>
 
       <div className="mx-auto mt-10 max-w-7xl border-t border-white/40 pt-6 text-center text-sm text-[#6B5A6B]">
-        © {new Date().getFullYear()} Univers Mikawaii. Tous droits réservés.
+        © {new Date().getFullYear()} L’Univers MiKawaii. Tous droits réservés.
       </div>
     </footer>
   );

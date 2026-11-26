@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "reconcile:stripe": "node ./scripts/reconcile-stripe-fulfillment.mjs",
+    "reconcile:backfill": "node ./scripts/backfill-fulfilled-metadata.mjs",
+    "reconcile:cron:local": "powershell -NoProfile -Command \"Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:3000/api/cron/reconcile?hours=24' -Headers @{ Authorization = 'Bearer ' + $env:CRON_SECRET } | Select-Object -ExpandProperty Content\"",
+    "smoke:security": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/local-security-smoke.ps1"
   },
   "dependencies": {
     "build": "^0.1.4",
@@ -16,6 +20,7 @@
     "motion": "^12.42.2",
     "next": "^16.2.12",
     "npm": "^11.21.1",
+    "pdfkit": "^0.21.0",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -28,6 +33,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26.1.1",
+    "@types/pdfkit": "^0.17.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^10.8.0",
