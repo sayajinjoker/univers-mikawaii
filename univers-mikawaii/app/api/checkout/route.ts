@@ -145,6 +145,7 @@ export async function POST(request: Request) {
             ? { allowed_countries: ["CA"] }
             : undefined,
         customer_creation: "always",
+        invoice_creation: { enabled: true },
         excluded_payment_method_types: ["klarna", "paypal"],
         metadata: {
           orderId,
