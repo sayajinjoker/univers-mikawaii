@@ -272,15 +272,32 @@ function buildVendorEmailHtml(order: StoredOrder) {
   `;
 }
 
-function buildInvoiceNoticeHtml() {
+function buildInvoiceNoticeHtml(order: StoredOrder, hasAttachment: boolean) {
+  if (hasAttachment) {
+    return `
+      <div style="text-align: center; margin: 20px 0; padding: 12px; border-radius: 12px; background: #f5f3ff; color: #5b21b6; font-size: 13px; font-weight: 600;">
+        Votre facture marquée PAYÉE est jointe à ce courriel en format PDF.
+      </div>
+    `;
+  }
+
+  if (order.stripeInvoicePdfUrl) {
+    return `
+      <div style="text-align: center; margin: 20px 0; padding: 12px; border-radius: 12px; background: #f5f3ff; color: #5b21b6; font-size: 13px; font-weight: 600;">
+        La pièce jointe facture n'a pas pu être générée. Vous pouvez télécharger votre facture ici :
+        <a href="${escapeHtml(order.stripeInvoicePdfUrl)}" style="color:#6d28d9;">ouvrir la facture PDF</a>.
+      </div>
+    `;
+  }
+
   return `
     <div style="text-align: center; margin: 20px 0; padding: 12px; border-radius: 12px; background: #f5f3ff; color: #5b21b6; font-size: 13px; font-weight: 600;">
-      Votre facture marquée PAYÉE est jointe à ce courriel en format PDF.
+      Votre facture est en cours de préparation et pourra vous être renvoyée sur demande.
     </div>
   `;
 }
 
-function buildBuyerEmailHtml(order: StoredOrder) {
+function buildBuyerEmailHtml(order: StoredOrder, hasInvoiceAttachment: boolean) {
   const reference = getOrderReference(order);
   const instructions = getDeliveryInstructions(order);
   const deliveryLabel = getDeliveryDisplayLabel(order);
@@ -307,7 +324,7 @@ function buildBuyerEmailHtml(order: StoredOrder) {
           ${order.items.map((item) => buildItemHtml(item, order.currency)).join("")}
           ${buildTotalsHtml(order)}
           ${buildShippingAddressHtml(order)}
-          ${buildInvoiceNoticeHtml()}
+          ${buildInvoiceNoticeHtml(order, hasInvoiceAttachment)}
           <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">
             Politique : toutes les ventes sont finales, sous réserve des recours obligatoires prévus par la loi. Conservez votre numéro de commande pour toute communication avec nous.
           </p>
@@ -354,7 +371,7 @@ function buildPlainTextBody(order: StoredOrder) {
   return lines.join("\n");
 }
 
-function buildBuyerPlainTextBody(order: StoredOrder) {
+function buildBuyerPlainTextBody(order: StoredOrder, hasInvoiceAttachment: boolean) {
   const itemsSubtotal = order.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const total = itemsSubtotal + order.shippingAmount;
   const business = getBusinessDetails();
@@ -377,7 +394,11 @@ function buildBuyerPlainTextBody(order: StoredOrder) {
     `Total payé : ${formatCurrency(total, order.currency)}`,
     ...formatShippingAddressPlainText(order),
     "",
-    "La facture marquée PAYÉE est jointe à ce courriel en format PDF.",
+    ...(hasInvoiceAttachment
+      ? ["La facture marquée PAYÉE est jointe à ce courriel en format PDF."]
+      : order.stripeInvoicePdfUrl
+        ? [`La pièce jointe facture n'a pas pu être générée. Vous pouvez télécharger la facture ici : ${order.stripeInvoicePdfUrl}`]
+        : ["La facture est en cours de préparation et pourra vous être renvoyée sur demande."]),
     "",
     `Pour toute question : ${business.contactEmail}${business.phone ? ` ou ${business.phone}` : ""}`,
     ...(business.address ? [`${business.name} — ${business.address}`] : []),
@@ -519,9 +540,70 @@ function createPaidInvoicePdf(order: StoredOrder) {
   });
 }
 
+async function buildInvoiceAttachment(order: StoredOrder) {
+  const filename = `facture-${getOrderReference(order)}.pdf`;
+
+  const downloadStripeInvoicePdf = async () => {
+    if (!order.stripeInvoicePdfUrl) {
+      return undefined;
+    }
+
+    try {
+      const response = await fetch(order.stripeInvoicePdfUrl);
+      if (!response.ok) {
+        console.error("[order-notification] Stripe invoice PDF download failed.", {
+          orderId: order.id,
+          stripeSessionId: order.stripeSessionId,
+          status: response.status,
+        });
+        return undefined;
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return {
+        filename,
+        content: buffer.toString("base64"),
+      };
+    } catch (error) {
+      console.error("[order-notification] Stripe invoice PDF download threw.", {
+        orderId: order.id,
+        stripeSessionId: order.stripeSessionId,
+        error: error instanceof Error ? error.message : "Unknown Stripe invoice download error.",
+      });
+      return undefined;
+    }
+  };
+
+  try {
+    const invoicePdf = await createPaidInvoicePdf(order);
+    return {
+      filename,
+      content: invoicePdf.toString("base64"),
+    };
+  } catch (error) {
+    console.error("[order-notification] Invoice PDF generation failed; trying Stripe invoice PDF fallback.", {
+      orderId: order.id,
+      stripeSessionId: order.stripeSessionId,
+      error: error instanceof Error ? error.message : "Unknown PDF error.",
+    });
+
+    const fallbackAttachment = await downloadStripeInvoicePdf();
+    if (fallbackAttachment) {
+      return fallbackAttachment;
+    }
+
+    console.error("[order-notification] Invoice attachment unavailable after all fallback attempts.", {
+      orderId: order.id,
+      stripeSessionId: order.stripeSessionId,
+    });
+    return undefined;
+  }
+}
+
 export async function sendPaidOrderNotification(order: StoredOrder) {
   const to = process.env.ORDER_NOTIFICATION_EMAIL ?? DEFAULT_NOTIFICATION_EMAIL;
-  const invoicePdf = await createPaidInvoicePdf(order);
+  const invoiceAttachment = await buildInvoiceAttachment(order);
 
   return sendViaResend({
     to,
@@ -529,26 +611,20 @@ export async function sendPaidOrderNotification(order: StoredOrder) {
     text: buildPlainTextBody(order),
     html: buildVendorEmailHtml(order),
     idempotencyKey: `vendor-${order.stripeSessionId ?? order.id}`,
-    attachments: [{
-      filename: `facture-${getOrderReference(order)}.pdf`,
-      content: invoicePdf.toString("base64"),
-    }],
+    ...(invoiceAttachment ? { attachments: [invoiceAttachment] } : {}),
   });
 }
 
 export async function sendBuyerOrderConfirmation(order: StoredOrder, buyerEmail: string) {
-  const invoicePdf = await createPaidInvoicePdf(order);
+  const invoiceAttachment = await buildInvoiceAttachment(order);
 
   return sendViaResend({
     to: buyerEmail,
     subject: `Confirmation de commande ${getOrderReference(order)} – L’Univers MiKawaii`,
-    text: buildBuyerPlainTextBody(order),
-    html: buildBuyerEmailHtml(order),
+    text: buildBuyerPlainTextBody(order, Boolean(invoiceAttachment)),
+    html: buildBuyerEmailHtml(order, Boolean(invoiceAttachment)),
     idempotencyKey: `buyer-${order.stripeSessionId ?? order.id}`,
     replyTo: getBusinessDetails().contactEmail,
-    attachments: [{
-      filename: `facture-${getOrderReference(order)}.pdf`,
-      content: invoicePdf.toString("base64"),
-    }],
+    ...(invoiceAttachment ? { attachments: [invoiceAttachment] } : {}),
   });
 }

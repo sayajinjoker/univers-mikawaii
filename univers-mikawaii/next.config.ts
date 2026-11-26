@@ -18,6 +18,11 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Ensure PDFKit bundled serverless functions keep built-in font data files.
+  outputFileTracingIncludes: {
+    "/api/webhooks/stripe": ["./node_modules/pdfkit/js/data/**"],
+    "/api/:path*": ["./node_modules/pdfkit/js/data/**"],
+  },
   async headers() {
     return [
       {
