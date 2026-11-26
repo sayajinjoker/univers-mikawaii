@@ -13,20 +13,25 @@ const WEBHOOK_RATE_LIMIT = {
   windowMs: 60 * 1000,
 } as const;
 
-function parseCustomization(description?: string | null) {
+function parseCustomization(description?: string | null, metadata?: Stripe.Metadata) {
   if (!description) return undefined;
   const parts = Object.fromEntries(description.split(" | ").map((part) => {
     const index = part.indexOf(": ");
-    return index >= 0 ? [part.slice(0, index), part.slice(index + 2)] : [part, ""];
+    return index >= 0 ? [part.slice(0, index), part.slice(index + 1).trim()] : [part, ""];
   }));
-  const scoop = Number(parts["Scoop"]);
+  const preferenceChunks = Object.entries(metadata ?? {})
+    .filter(([key, value]) => /^preferences_\d+$/.test(key) && typeof value === "string")
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, value]) => value)
+    .join("");
+  const scoop = Number(metadata?.scoopCount ?? parts["Scoop"]);
   return {
     scoopCount: scoop === 2 ? 2 : 1,
-    notes: parts["Preferences"] ?? "",
-    surpriseStar: parts["Etoile surprise"] === "Oui",
-    socialMediaVideo: parts["Video reseaux"] === "Oui",
-    recipientName: parts["Destinataire"]?.trim() || undefined,
-    audience: parts["Public"] === "Enfant" ? "child" as const : "adult" as const,
+    notes: preferenceChunks || parts["Preferences"] || "",
+    surpriseStar: (metadata?.surpriseStar ?? parts["Etoile surprise"]) === "Oui",
+    socialMediaVideo: (metadata?.socialMediaVideo ?? parts["Video reseaux"]) === "Oui",
+    recipientName: metadata?.recipientName?.trim() || parts["Destinataire"]?.trim() || undefined,
+    audience: (metadata?.audience ?? (parts["Public"] === "Enfant" ? "child" : "adult")) === "child" ? "child" as const : "adult" as const,
   };
 }
 export async function POST(request: Request) {
@@ -94,11 +99,14 @@ export async function POST(request: Request) {
         const quantity = line.quantity ?? 1;
         const unitAmount = line.price?.unit_amount ?? Math.round((line.amount_total ?? 0) / quantity);
         items.push({
-          id: Number(line.price?.metadata?.productId ?? 0),
+          id: Number(product && "metadata" in product ? product.metadata.productId ?? 0 : line.price?.metadata?.productId ?? 0),
           name,
           unitPrice: unitAmount / 100,
           quantity,
-          customization: parseCustomization(product && "description" in product ? product.description : line.description),
+          customization: parseCustomization(
+            product && "description" in product ? product.description : line.description,
+            product && "metadata" in product ? product.metadata : undefined
+          ),
           imageUrl: product && "metadata" in product ? product.metadata.image || undefined : undefined,
 
         });

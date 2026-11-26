@@ -1,6 +1,6 @@
 export interface EmailShippingAddress { name?: string; line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }
 import PDFDocument from "pdfkit";
-import { getScoopArticleCount } from "@/lib/products";
+import { getProductById, getScoopArticleCount } from "@/lib/products";
 import { getStripeServer } from "@/lib/stripe-server";
 
 export interface EmailOrderItem { id: number; name: string; unitPrice: number; quantity: number; imageUrl?: string; customization?: { scoopCount: number; notes: string; surpriseStar: boolean; socialMediaVideo: boolean; recipientName?: string; audience: "child" | "adult" } }
@@ -468,6 +468,47 @@ async function sendViaResend(params: {
   }
 }
 
+function getInvoiceItemName(item: StoredOrderItem) {
+  const catalogName = getProductById(item.id)?.name;
+  if (catalogName) return catalogName;
+
+  const cleanName = item.name
+    .split(" — ")[0]
+    .replace(/\s*[•—-]\s*Scoop:.*/i, "")
+    .replace(/Une (grande|petite) boîte surprise.*$/i, "")
+    .trim();
+
+  return cleanName || item.name;
+}
+
+function writeInvoiceCustomization(doc: PDFKit.PDFDocument, item: StoredOrderItem) {
+  if (!item.customization) return;
+
+  const c = item.customization;
+  const optionRows = [
+    ["Scoops", String(c.scoopCount)],
+    ["Articles", String(getScoopArticleCount(item.id, c.scoopCount))],
+    ["Public", c.audience === "child" ? "Enfant" : "Adulte"],
+    ["Étoile surprise", c.surpriseStar ? "Oui" : "Non"],
+    ["Vidéo réseaux sociaux", c.socialMediaVideo ? "Oui" : "Non"],
+    ["Destinataire", c.recipientName?.trim() || "—"],
+  ];
+
+  doc.moveDown(0.25).font("Helvetica-Bold").fontSize(9).fillColor("#6b21a8");
+  doc.text("Détails de personnalisation");
+  doc.moveDown(0.15).font("Helvetica").fontSize(8.5).fillColor("#374151");
+  for (const [label, value] of optionRows) {
+    doc.text(`• ${label} : ${value}`, { indent: 10, width: 470 });
+  }
+
+  if (c.notes.trim()) {
+    doc.moveDown(0.2).font("Helvetica-Bold").fontSize(8.5).fillColor("#4a3b47");
+    doc.text("• Préférences / notes", { indent: 10, width: 470 });
+    doc.font("Helvetica").fontSize(8.5).fillColor("#374151");
+    doc.text(c.notes.trim(), { indent: 22, width: 445, lineGap: 1.5 });
+  }
+}
+
 function createPaidInvoicePdf(order: StoredOrder) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -493,24 +534,10 @@ function createPaidInvoicePdf(order: StoredOrder) {
 
     for (const item of order.items) {
        doc.font("Helvetica-Bold").fontSize(10).text(
-         `${item.quantity} × ${item.name} — ${formatCurrency(item.unitPrice * item.quantity, order.currency)}`
+         `${item.quantity} × ${getInvoiceItemName(item)} — ${formatCurrency(item.unitPrice * item.quantity, order.currency)}`
        );
        if (item.customization) {
-         const c = item.customization;
-         const details = [
-           `${c.scoopCount} scoop${c.scoopCount > 1 ? "s" : ""}`,
-           `Articles : ${getScoopArticleCount(item.id, c.scoopCount)}`,
-           `Public : ${c.audience === "child" ? "Enfant" : "Adulte"}`,
-           `Étoile surprise : ${c.surpriseStar ? "Oui" : "Non"}`,
-           `Vidéo réseaux sociaux : ${c.socialMediaVideo ? "Oui" : "Non"}`,
-           c.recipientName?.trim() ? `Destinataire : ${c.recipientName.trim()}` : "",
-           c.notes.trim() ? `Préférences : ${c.notes.trim()}` : "",
-         ].filter(Boolean);
-
-         doc.font("Helvetica").fontSize(9).fillColor("#374151");
-         for (const detail of details) {
-           doc.text(`• ${detail}`, { indent: 10, width: 480, align: "left" });
-         }
+         writeInvoiceCustomization(doc, item);
        }
        doc.moveDown(0.55);
     }

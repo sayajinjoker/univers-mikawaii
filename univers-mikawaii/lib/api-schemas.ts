@@ -1,4 +1,4 @@
-import { type CheckoutItemInput } from "@/lib/checkout-pricing";
+import { PREFERENCES_MAX_LENGTH, type CheckoutItemInput } from "@/lib/checkout-pricing";
 import { getDeliveryOption, type DeliveryMethod } from "@/lib/delivery";
 
 export type CheckoutRequestPayload = {
@@ -41,7 +41,9 @@ function parseCheckoutItem(item: unknown): CheckoutItemInput | null {
     if (!isRecord(customization)) return null;
 
     const scoopCount = customization.scoopCount;
-    const notes = cleanString(customization.notes, 280);
+    const notesRaw = typeof customization.notes === "string" ? customization.notes.trim() : "";
+    if (notesRaw.length > PREFERENCES_MAX_LENGTH) return null;
+    const notes = notesRaw;
     const surpriseStar = customization.surpriseStar;
     const socialMediaVideo = customization.socialMediaVideo;
     const recipientName = cleanString(customization.recipientName, 100);

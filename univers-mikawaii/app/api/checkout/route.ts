@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import {
-  buildCustomizationDescription,
   CheckoutValidationError,
   resolveCheckoutItems,
+  type ResolvedCheckoutItem,
 } from "@/lib/checkout-pricing";
 import { parseCheckoutRequestBody } from "@/lib/api-schemas";
 import { takeRateLimitToken } from "@/lib/rate-limit";
 import { getClientIp, resolveTrustedCheckoutOrigin } from "@/lib/request-security";
 import { getStripeServer } from "@/lib/stripe-server";
 import { getDeliveryOption } from "@/lib/delivery";
-import { getProductById, getProductImageUrl, getScoopArticleCount } from "@/lib/products";
+import { getProductImageUrl, getScoopArticleCount } from "@/lib/products";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,37 @@ const CHECKOUT_RATE_LIMIT = {
 
 function toCents(amount: number) {
   return Math.round(amount * 100);
+}
+
+function buildPreferenceMetadata(notes?: string) {
+  const metadata: Record<string, string> = {};
+  const normalized = notes?.trim() ?? "";
+  const chunkSize = 450;
+
+  for (let index = 0, chunk = 0; index < normalized.length; index += chunkSize, chunk += 1) {
+    metadata[`preferences_${String(chunk).padStart(2, "0")}`] = normalized.slice(index, index + chunkSize);
+  }
+
+  return metadata;
+}
+
+function buildCheckoutCustomizationSummary(customization: ResolvedCheckoutItem["customization"], articleCount: number) {
+  if (!customization) return undefined;
+
+  return `Personnalisation : ${customization.scoopCount} scoop${customization.scoopCount > 1 ? "s" : ""} · ${articleCount} articles · ${customization.audience === "child" ? "enfant" : "adulte"}`;
+}
+
+function buildCustomizationMetadata(customization: ResolvedCheckoutItem["customization"]) {
+  if (!customization) return {};
+
+  return {
+    scoopCount: String(customization.scoopCount),
+    audience: customization.audience,
+    surpriseStar: customization.surpriseStar ? "Oui" : "Non",
+    socialMediaVideo: customization.socialMediaVideo ? "Oui" : "Non",
+    recipientName: customization.recipientName.slice(0, 100),
+    ...buildPreferenceMetadata(customization.notes),
+  };
 }
 
 export async function POST(request: Request) {
@@ -86,16 +117,13 @@ export async function POST(request: Request) {
         currency,
         unit_amount: toCents(item.unitPrice),
         product_data: {
-          name: [
-            item.name,
-            getProductById(item.id)?.description,
-            buildCustomizationDescription(item.customization, getScoopArticleCount(item.id, item.customization?.scoopCount ?? 1))?.replaceAll(" | ", " · "),
-          ].filter(Boolean).join(" — ").slice(0, 250),
-          description: buildCustomizationDescription(item.customization, getScoopArticleCount(item.id, item.customization?.scoopCount ?? 1)),
+          name: item.name.slice(0, 250),
+          description: buildCheckoutCustomizationSummary(item.customization, getScoopArticleCount(item.id, item.customization?.scoopCount ?? 1)),
           metadata: {
             productId: String(item.id),
             catalogName: item.name,
             image: getProductImageUrl(item.id),
+            ...buildCustomizationMetadata(item.customization),
           },
         },
       },

@@ -56,7 +56,7 @@ function normalizeCustomization(customization?: CheckoutCustomization) {
 
   return {
     scoopCount: customization.scoopCount,
-    notes: (customization.notes ?? "").trim().slice(0, 280),
+    notes: (customization.notes ?? "").trim(),
     surpriseStar: customization.surpriseStar,
     socialMediaVideo: customization.socialMediaVideo,
     recipientName: recipientName.slice(0, 100),
@@ -121,3 +121,5 @@ export function buildCustomizationDescription(customization?: CheckoutCustomizat
 
   return parts.join(" | ");
 }
+
+export const PREFERENCES_MAX_LENGTH = 2000;

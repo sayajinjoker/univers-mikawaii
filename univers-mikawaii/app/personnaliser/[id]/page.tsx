@@ -1,5 +1,6 @@
 "use client";
 
+import { PREFERENCES_MAX_LENGTH } from "@/lib/checkout-pricing";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Sparkles, Star } from "lucide-react";
@@ -268,11 +269,14 @@ export default function ProductCustomizerPage() {
               </label>
               <textarea
                 value={notes}
-                maxLength={280}
+                maxLength={PREFERENCES_MAX_LENGTH}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Ex: métier, couleurs préférées, occupation, thèmes à éviter…"
                 className="mt-2 min-h-[76px] w-full max-w-full resize-y rounded-xl border border-[#f4d0c9] bg-white px-3 py-2 text-sm text-[#4a3b47] outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
               />
+              <p className="mt-1 text-right text-[11px] text-gray-500">
+                {notes.length}/{PREFERENCES_MAX_LENGTH} caractères — toutes les préférences saisies seront conservées.
+              </p>
             </div>
 
             <div className="mt-4 max-w-full overflow-hidden rounded-xl border border-[#f4d0c9] bg-[#fffaf8] p-3">
