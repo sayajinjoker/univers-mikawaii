@@ -136,40 +136,12 @@ export async function POST(request: Request) {
         stripeInvoiceId: typeof session.invoice === "string" ? session.invoice : undefined,
         stripePaymentStatus: session.payment_status,
       };
-      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : undefined;
-      if (buyerEmail && paymentIntentId) {
-        try { await stripe.paymentIntents.update(paymentIntentId, { receipt_email: buyerEmail }); } catch (error) {
-          console.warn("[webhook] Could not request Stripe receipt:", error);
-        }
-      }
       const customerId = typeof session.customer === "string" ? session.customer : undefined;
       if (customerId) {
         try { await stripe.customers.update(customerId, { preferred_locales: ["fr-CA", "fr"] }); } catch (error) {
           console.warn("[webhook] Could not set customer locale:", error);
         }
       }
-      const invoiceId = order.stripeInvoiceId;
-      if (invoiceId) {
-        try {
-          let invoice = await stripe.invoices.retrieve(invoiceId);
-          for (let attempt = 0; invoice.status !== "paid" && attempt < 2; attempt += 1) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            invoice = await stripe.invoices.retrieve(invoiceId);
-          }
-
-          if (session.payment_status === "paid" && invoice.status === "open") {
-            invoice = await stripe.invoices.pay(invoiceId, { paid_out_of_band: true });
-          }
-
-           if (invoice.status === "paid" && invoice.invoice_pdf) {
-             order.stripeInvoicePdfUrl = invoice.invoice_pdf;
-           } else {
-             console.warn(`[webhook] Invoice ${invoiceId} is not paid/finalized yet; no invoice link sent.`);
-           }
-         } catch (error) {
-           console.warn("[webhook] Could not retrieve invoice:", error);
-         }
-       }
       const vendorResult = await sendPaidOrderNotification(order);
       console.log(`[webhook] Vendor email result for ${order.id}:`, vendorResult);
       if (!vendorResult.sent) {

@@ -39,7 +39,18 @@ function buildPreferenceMetadata(notes?: string) {
 function buildCheckoutCustomizationSummary(customization: ResolvedCheckoutItem["customization"], articleCount: number) {
   if (!customization) return undefined;
 
-  return `Personnalisation : ${customization.scoopCount} scoop${customization.scoopCount > 1 ? "s" : ""} · ${articleCount} articles · ${customization.audience === "child" ? "enfant" : "adulte"}`;
+  const optionLines = [
+    `${customization.scoopCount} scoop${customization.scoopCount > 1 ? "s" : ""} · ${articleCount} articles · ${customization.audience === "child" ? "enfant" : "adulte"}`,
+    `Destinataire : ${customization.recipientName}`,
+    `Étoile surprise : ${customization.surpriseStar ? "Oui" : "Non"}`,
+    `Vidéo réseaux sociaux : ${customization.socialMediaVideo ? "Oui" : "Non"}`,
+  ];
+
+  if (customization.notes.trim()) {
+    optionLines.push(`Préférences : ${customization.notes.trim()}`);
+  }
+
+  return optionLines.join("\n").slice(0, 500);
 }
 
 function buildCustomizationMetadata(customization: ResolvedCheckoutItem["customization"]) {
@@ -173,7 +184,6 @@ export async function POST(request: Request) {
             ? { allowed_countries: ["CA"] }
             : undefined,
         customer_creation: "always",
-        invoice_creation: { enabled: true },
         excluded_payment_method_types: ["klarna", "paypal"],
         metadata: {
           orderId,

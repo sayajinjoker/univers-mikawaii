@@ -18,10 +18,17 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
-  // Ensure PDFKit bundled serverless functions keep built-in font data files.
+  serverExternalPackages: ["pdfkit"],
+  // Keep PDFKit and its built-in standard fonts available to serverless API routes.
   outputFileTracingIncludes: {
-    "/api/webhooks/stripe": ["./node_modules/pdfkit/js/data/**"],
-    "/api/:path*": ["./node_modules/pdfkit/js/data/**"],
+    "/api/webhooks/stripe": [
+      "./node_modules/pdfkit/**",
+      "./node_modules/pdfkit/js/standard-fonts/**",
+    ],
+    "/api/:path*": [
+      "./node_modules/pdfkit/**",
+      "./node_modules/pdfkit/js/standard-fonts/**",
+    ],
   },
   async headers() {
     return [

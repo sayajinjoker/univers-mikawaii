@@ -1,7 +1,6 @@
 export interface EmailShippingAddress { name?: string; line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }
 import PDFDocument from "pdfkit";
 import { getProductById, getScoopArticleCount } from "@/lib/products";
-import { getStripeServer } from "@/lib/stripe-server";
 
 export interface EmailOrderItem { id: number; name: string; unitPrice: number; quantity: number; imageUrl?: string; customization?: { scoopCount: number; notes: string; surpriseStar: boolean; socialMediaVideo: boolean; recipientName?: string; audience: "child" | "adult" } }
 export interface StoredOrder { id: string; status: "draft" | "paid" | "expired" | "failed"; currency: string; shippingAmount: number; deliveryMethod?: string; deliveryLabel?: string; deliverySector?: string; createdAt: string; updatedAt: string; items: EmailOrderItem[]; buyerEmail?: string; shippingAddress?: EmailShippingAddress; stripeSessionId?: string; stripeCustomerId?: string; stripePaymentIntentId?: string; stripeInvoiceId?: string; stripeInvoicePdfUrl?: string; stripeInvoiceHostedUrl?: string; stripePaymentStatus?: string }
@@ -147,22 +146,18 @@ function buildItemHtml(item: StoredOrderItem, currency: string) {
   const badges = customizationBadges(item);
   const notes = item.customization?.notes.trim();
   const recipientName = item.customization?.recipientName?.trim();
-  const imageUrl = getPublicImageUrl(item.imageUrl);
 
   return `
     <div style="${ITEM_CARD_STYLE}">
-      <div style="display: flex; align-items: flex-start; gap: 12px;">
-        ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.name)}" width="64" height="64" style="width:64px;height:64px;border-radius:10px;object-fit:cover;display:block;" />` : ""}
-        <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; justify-content: space-between; gap: 8px; font-weight: 600; color: #1f2937;">
-            <span>${item.quantity} × ${escapeHtml(item.name)}</span>
-            <span style="white-space: nowrap;">${formatCurrency(item.unitPrice * item.quantity, currency)}</span>
-          </div>
-          ${recipientName ? `<div style="margin-top: 6px; font-size: 13px; color: #be185d; font-weight: 600;">Destinataire : ${escapeHtml(recipientName)}</div>` : ""}
-          ${badges.length > 0 ? `<div style="margin-top: 8px;">${badges.map((badge) => `<span style="${BADGE_STYLE}">${escapeHtml(badge.replace("Video reseaux sociaux", "Vidéo pour réseaux sociaux").replace("Etoile", "Étoile"))}</span>`).join("")}</div>` : ""}
+      <div style="display:block;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; font-weight:700; color:#1f2937;">
+          <span>${item.quantity} × ${escapeHtml(getInvoiceItemName(item))}</span>
+          <span style="white-space:nowrap;">${formatCurrency(item.unitPrice * item.quantity, currency)}</span>
         </div>
+        ${recipientName ? `<div style="margin-top:8px; font-size:13px; color:#be185d; font-weight:600;">Destinataire : ${escapeHtml(recipientName)}</div>` : ""}
+        ${badges.length > 0 ? `<div style="margin-top:10px;">${badges.map((badge) => `<span style="${BADGE_STYLE}">${escapeHtml(badge.replace("Video reseaux sociaux", "Vidéo pour réseaux sociaux").replace("Etoile", "Étoile"))}</span>`).join("")}</div>` : ""}
       </div>
-      ${notes ? `<div style="${NOTES_STYLE}"><strong>Notes client :</strong><br/>${nl2br(notes)}</div>` : ""}
+      ${notes ? `<div style="${NOTES_STYLE}"><strong>Notes client</strong><br/>${nl2br(notes)}</div>` : ""}
     </div>
   `;
 }
@@ -242,7 +237,7 @@ function buildVendorEmailHtml(order: StoredOrder) {
     <div style="${EMAIL_WRAPPER_STYLE}">
       <div style="${CARD_STYLE}">
         <div style="${HEADER_STYLE}">
-          <div style="font-size: 22px; font-weight: 700; color: #4c1d95;">Nouvelle commande payée</div>
+          <div style="font-size: 22px; font-weight: 700, color: #4c1d95;">Nouvelle commande payée</div>
           <div style="font-size: 13px; color: #581c87; margin-top: 4px;">L’Univers MiKawaii</div>
         </div>
         <div style="${BODY_STYLE}">
@@ -569,95 +564,11 @@ function createPaidInvoicePdf(order: StoredOrder) {
 }
 
 async function buildInvoiceAttachment(order: StoredOrder) {
-  const filename = `facture-${getOrderReference(order)}.pdf`;
-
-  const resolveStripeInvoicePdfUrl = async () => {
-    if (order.stripeInvoicePdfUrl) {
-      return order.stripeInvoicePdfUrl;
-    }
-
-    if (!order.stripeInvoiceId) {
-      return undefined;
-    }
-
-    try {
-      const stripe = getStripeServer();
-      let invoice = await stripe.invoices.retrieve(order.stripeInvoiceId);
-      for (let attempt = 0; !invoice.invoice_pdf && attempt < 2; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 400));
-        invoice = await stripe.invoices.retrieve(order.stripeInvoiceId);
-      }
-      return invoice.invoice_pdf ?? undefined;
-    } catch (error) {
-      console.error("[order-notification] Could not resolve Stripe invoice PDF URL.", {
-        orderId: order.id,
-        stripeSessionId: order.stripeSessionId,
-        stripeInvoiceId: order.stripeInvoiceId,
-        error: error instanceof Error ? error.message : "Unknown Stripe invoice lookup error.",
-      });
-      return undefined;
-    }
+  const invoicePdf = await createPaidInvoicePdf(order);
+  return {
+    filename: `facture-${getOrderReference(order)}.pdf`,
+    content: invoicePdf.toString("base64"),
   };
-
-  const downloadStripeInvoicePdf = async () => {
-    const invoicePdfUrl = await resolveStripeInvoicePdfUrl();
-    if (!invoicePdfUrl) {
-      return undefined;
-    }
-
-    try {
-      const response = await fetch(invoicePdfUrl);
-      if (!response.ok) {
-        console.error("[order-notification] Stripe invoice PDF download failed.", {
-          orderId: order.id,
-          stripeSessionId: order.stripeSessionId,
-          stripeInvoiceId: order.stripeInvoiceId,
-          status: response.status,
-        });
-        return undefined;
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      return {
-        filename,
-        content: buffer.toString("base64"),
-      };
-    } catch (error) {
-      console.error("[order-notification] Stripe invoice PDF download threw.", {
-        orderId: order.id,
-        stripeSessionId: order.stripeSessionId,
-        stripeInvoiceId: order.stripeInvoiceId,
-        error: error instanceof Error ? error.message : "Unknown Stripe invoice download error.",
-      });
-      return undefined;
-    }
-  };
-
-  try {
-    const invoicePdf = await createPaidInvoicePdf(order);
-    return {
-      filename,
-      content: invoicePdf.toString("base64"),
-    };
-  } catch (error) {
-    console.error("[order-notification] Invoice PDF generation failed; trying Stripe invoice PDF fallback.", {
-      orderId: order.id,
-      stripeSessionId: order.stripeSessionId,
-      error: error instanceof Error ? error.message : "Unknown PDF error.",
-    });
-
-    const fallbackAttachment = await downloadStripeInvoicePdf();
-    if (fallbackAttachment) {
-      return fallbackAttachment;
-    }
-
-    console.error("[order-notification] Invoice attachment unavailable after all fallback attempts.", {
-      orderId: order.id,
-      stripeSessionId: order.stripeSessionId,
-    });
-    return undefined;
-  }
 }
 
 export async function sendPaidOrderNotification(order: StoredOrder) {
